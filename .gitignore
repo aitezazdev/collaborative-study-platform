@@ -1,2 +1,4 @@
 npm
 .env
+
+node_modules/
