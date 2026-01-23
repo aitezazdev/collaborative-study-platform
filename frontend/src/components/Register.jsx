@@ -2,9 +2,12 @@ import { useState } from "react";
 import LiquidGlassButton from "./LiquadButton";
 import { useDispatch, useSelector } from "react-redux";
 import { registerUser } from "../redux/slices/authSlice";
+import { Link, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 const Register = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { loading, error } = useSelector((state) => state.auth);
   const [userdata, setUserdata] = useState({
     name: "",
@@ -15,7 +18,6 @@ const Register = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setUserdata({ ...userdata, [name]: value });
-    console.log(userdata);
   };
 
   const handleSubmit = async (e) => {
@@ -28,8 +30,12 @@ const Register = () => {
         email: "",
         password: "",
       });
+
+      toast.success("Registration Successful");
+      navigate("/");
     } catch (err) {
-      console.log(err)
+      console.log(err);
+      toast.error("Registration Failed");
     }
   };
 
@@ -75,6 +81,16 @@ const Register = () => {
         </div>
         <LiquidGlassButton text={loading ? "Registering..." : "Register"} />
         {error && <p className="text-red-500 mt-4">{error}</p>}
+
+        <p className="mt-4 text-center text-gray-600">
+          Already have an account?
+          <Link
+            to="/login"
+            className="text-blue-500 mx-1 font-medium hover:underline"
+          >
+            Login
+          </Link>
+        </p>
       </form>
     </div>
   );
