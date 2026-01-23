@@ -6,8 +6,7 @@ import HomePage from "./pages/HomePage";
 import { ToastContainer } from "react-toastify";
 
 function App() {
-  const token =
-    useSelector((state) => state.auth.token) || localStorage.getItem("token");
+  const token = useSelector((state) => state.auth.token) || localStorage.getItem("token");
 
   return (
     <>

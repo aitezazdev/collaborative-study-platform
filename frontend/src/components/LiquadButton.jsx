@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-export default function LiquidGlassButton({ text }) {
+export default function LiquidGlassButton({ text , onClick }) {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isHovered, setIsHovered] = useState(false);
 
@@ -14,6 +14,7 @@ export default function LiquidGlassButton({ text }) {
 
   return (
       <button
+        onClick={onClick}
         className="relative block mx-auto overflow-hidden cursor-pointer px-8 py-4 rounded-2xl font-semibold text-white transition-all duration-300 ease-out group"
         style={{
           background: "rgba(255, 255, 255, 0.4)",
