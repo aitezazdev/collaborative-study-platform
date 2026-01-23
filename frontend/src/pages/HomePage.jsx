@@ -15,8 +15,8 @@ const HomePage = () => {
 
   const handleLogout = () => {
     dispatch(logout());
-    navigate('/login');
     toast.success("Logged out successfully")
+    navigate('/login');
   }
 
   return (
