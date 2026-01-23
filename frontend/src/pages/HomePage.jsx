@@ -1,17 +1,25 @@
-import React from "react";
+import React, { useState } from "react";
 import LiquidGlassButton from "../components/LiquadButton";
 import { useSelector } from "react-redux";
 import { useDispatch } from "react-redux";
 import { logout } from "../redux/slices/authSlice";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import CreateClass from "../components/ui/CreateClass";
 
 const HomePage = () => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const reduxUser = useSelector((state) => state.auth.user);
   const localUser = JSON.parse(localStorage.getItem("user"));
   const dispatch = useDispatch();
   const user = reduxUser || localUser;
   const navigate = useNavigate();
+
+  const handleClassModalOpen = () => {
+    setIsModalOpen(!isModalOpen);
+  }
+
 
   const handleLogout = () => {
     try {
@@ -45,7 +53,7 @@ const HomePage = () => {
                 : "—"}
             </p>
             <div className="flex justify-center my-5">
-              <LiquidGlassButton text="create" />
+              <LiquidGlassButton text="create" onClick={handleClassModalOpen} />
               <LiquidGlassButton text="join" />
             </div>
           </div>
@@ -61,6 +69,7 @@ const HomePage = () => {
           Create a new session or join an existing one
         </p>
       </div>
+      {isModalOpen && <CreateClass isOpen={isModalOpen} handle={handleClassModalOpen} />}
     </div>
   );
 };

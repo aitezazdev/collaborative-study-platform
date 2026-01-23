@@ -4,8 +4,10 @@ import { Route, Routes, Navigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import HomePage from "./pages/HomePage";
 import { ToastContainer } from "react-toastify";
+import Modal from "react-modal";
 
 function App() {
+  Modal.setAppElement("#root");
   const token = useSelector((state) => state.auth.token) || localStorage.getItem("token");
 
   return (

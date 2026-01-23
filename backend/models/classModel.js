@@ -7,8 +7,7 @@ const classSchema = new mongoose.Schema(
       required: true,
     },
     description: {
-      type: String,
-      required: true,
+      type: String
     },
     teacher: {
       type: mongoose.Schema.Types.ObjectId,

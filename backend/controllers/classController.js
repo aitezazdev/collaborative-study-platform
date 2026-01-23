@@ -21,9 +21,10 @@ export const createClass = async (req, res) => {
       joinCode = crypto.randomBytes(4).toString("hex");
     }
 
+
     const newClass = await Class.create({
       title,
-      description,
+      description: description || "",
       teacher: req.user._id,
       joinCode,
     });
@@ -88,22 +89,22 @@ export const joinClass = async (req, res) => {
 };
 
 export const fetchUserClasses = async (req, res) => {
-       const userId = req.user?._id;
-       try {
-        if (!userId) {
-          return res.status(401).json({ message: "Unauthorized" });
-        }
-        const classes = await Class.find({
-          $or: [{ teacher: userId }, { students: userId }],
-        })
-          .populate("teacher", "name email avatar")
-          .populate("students", "name email avatar");
-        return res.status(200).json({ 
-          success: true, 
-          message: "Classes fetched successfully",
-          data : classes 
-        });
-       } catch (error) {
-          res.status(500).json({ message: "Server Error" });
-      }
+  const userId = req.user?._id;
+  try {
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const classes = await Class.find({
+      $or: [{ teacher: userId }, { students: userId }],
+    })
+      .populate("teacher", "name email avatar")
+      .populate("students", "name email avatar");
+    return res.status(200).json({
+      success: true,
+      message: "Classes fetched successfully",
+      data: classes
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
 };
