@@ -36,7 +36,7 @@ const Register = () => {
   return (
     <div className="p-5 bg-gray-100 shadow-md rounded-lg max-w-md mx-auto mt-20">
       <h2 className="text-center text-4xl font-semibold">Get Started</h2>
-      <form action="" onSubmit={handleSubmit}>
+      <form  onSubmit={handleSubmit}>
         <div className="my-3 flex flex-col">
           <label htmlFor="name">Name</label>
           <input
