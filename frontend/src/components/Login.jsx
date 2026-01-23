@@ -3,29 +3,36 @@ import LiquidButton from "./LiquadButton";
 import { loginUser } from "../redux/slices/authSlice";
 import { useState } from "react";
 import { useDispatch } from "react-redux";
-
+import { useSelector } from "react-redux";
 const Login = () => {
+  const {loading , error , user} = useSelector((state) => state.auth);
   const dispatch = useDispatch();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [userData , setUserData] = useState({
+    email : "",
+    password : "",
+  });
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    if (name === "email") {
-      setEmail(value);
-    } else if (name === "password") {
-      setPassword(value);
-    }
-  };
+  const handleChange = (e)=>{
+    setUserData({...userData , [e.target.name] : e.target.value});
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    dispatch(loginUser({ email, password }));
+    try {
+      dispatch(loginUser(userData)).unwrap()
+      setUserData({
+        email : "",
+        password : "",
+      })
+    } catch (error) {
+      console.log(error);
+    };
+    
   };
   return (
     <div className="p-5 bg-gray-100 shadow-md rounded-lg max-w-md mx-auto mt-20">
       <h2 className="text-center text-4xl font-semibold">Login</h2>
-      <form>
+      <form onSubmit={handleSubmit}>
         <div className="my-6 flex flex-col">
           <label htmlFor="email">Email:</label>
           <input
@@ -36,7 +43,7 @@ const Login = () => {
             name="email"
             required
             placeholder="Your Name"
-            onchange={handleChange}
+            onChange={handleChange}
           />
         </div>
         <div className="my-6 flex flex-col">
@@ -49,10 +56,11 @@ const Login = () => {
             name="password"
             required
             placeholder="Your Password"
-            onchange={handleChange}
+            onChange={handleChange}
           />
         </div>
-        <LiquidButton text="Login" onClick={handleSubmit} />
+        <LiquidButton text={loading ? 'loginin' : 'Login'}/>
+        {error && <p className="text-red-500 mt-4 text-center">{error}</p>}
       </form>
     </div>
   );
