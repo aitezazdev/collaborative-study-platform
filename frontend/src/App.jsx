@@ -1,10 +1,9 @@
-import Login from "./components/Login";
+import Register from "./components/Register";
 
 function App() {
   return (
     <>
-      <h1 className="bg-red-200">hello</h1>
-      <Login />
+      <Register />
     </>
   );
 }
