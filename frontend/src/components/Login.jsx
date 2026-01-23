@@ -1,8 +1,9 @@
 import React from 'react'
+import LiquidButton from './LiquadButton'
 
 const Login = () => {
   return (
-    <div>Login</div>
+    <div><LiquidButton text={"Login"} /></div>
   )
 }
 
