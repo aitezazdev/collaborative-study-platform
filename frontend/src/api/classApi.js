@@ -14,16 +14,18 @@ export const joinClass = async (data) => {
     const response = await instance.post("/class/join", data);
     return response.data;
   } catch (error) {
-    console.log(error);
+    if (error.response && error.response.data) {
+      return error.response.data;
+    }
+    return { success: false, message: "Server error" };
   }
 };
 
-
-export const fetchUserClasses = async()=>{
-    try {
-        const response = await instance.get('/class/my-classes');
-        return response.data
-    } catch (error) {
-        console.log(error);
-    }
-}
+export const fetchUserClasses = async () => {
+  try {
+    const response = await instance.get("/class/my-classes");
+    return response.data;
+  } catch (error) {
+    console.log(error);
+  }
+};

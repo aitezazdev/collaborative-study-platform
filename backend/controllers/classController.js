@@ -21,7 +21,6 @@ export const createClass = async (req, res) => {
       joinCode = crypto.randomBytes(4).toString("hex");
     }
 
-
     const newClass = await Class.create({
       title,
       description: description || "",
@@ -68,7 +67,9 @@ export const joinClass = async (req, res) => {
     }
 
     if (foundClass.students.includes(req.user._id)) {
-      return res.status(400).json({ message: "Already joined" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Already joined" });
     }
 
     foundClass.students.push(req.user._id);
@@ -87,6 +88,7 @@ export const joinClass = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
+
 //fetch user classes
 export const fetchUserClasses = async (req, res) => {
   const userId = req.user?._id;
@@ -102,7 +104,7 @@ export const fetchUserClasses = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Classes fetched successfully",
-      data: classes
+      data: classes,
     });
   } catch (error) {
     res.status(500).json({ message: "Server Error" });

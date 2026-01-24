@@ -13,16 +13,22 @@ const JoinClass = ({ handle }) => {
   const handleSubmit = async () => {
     try {
       if (!joinCode.trim()) {
-        alert("Class Name is required");
+        toast.error("Join Code is required");
         return;
       }
-      await joinClass({ joinCode });
+      const response = await joinClass({ joinCode: joinCode });
+      if (response.success) {
+        toast.success("Class Joined Successfully");
+      } else {
+        toast.error(response.message);
+      }
       handle();
-      toast.success("Class Joined Successfully");
     } catch (error) {
       console.log(error);
+      toast.error("Failed to join class");
     }
   };
+
   return (
     <Modal
       isOpen={true}
