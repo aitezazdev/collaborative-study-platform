@@ -1,22 +1,22 @@
+import { Routes, Route, Navigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import Login from "./components/Login";
 import Register from "./components/Register";
-import { Route, Routes, Navigate } from "react-router-dom";
-import { useSelector } from "react-redux";
 import HomePage from "./pages/HomePage";
+import ClassPage from "./pages/ClassPage";
 import { ToastContainer } from "react-toastify";
+import AppLayout from "./layouts/AppLayout";
 
 function App() {
-  const token = useSelector((state) => state.auth.token) || localStorage.getItem("token");
+  const token =
+    useSelector((state) => state.auth.token) ||
+    localStorage.getItem("token");
 
   return (
     <>
       <ToastContainer />
-      <Routes>
-        <Route
-          path="/"
-          element={token ? <HomePage /> : <Navigate to="/login" />}
-        />
 
+      <Routes>
         <Route
           path="/login"
           element={!token ? <Login /> : <Navigate to="/" />}
@@ -25,6 +25,18 @@ function App() {
           path="/register"
           element={!token ? <Register /> : <Navigate to="/" />}
         />
+
+        {token && (
+          <Route element={<AppLayout />}>
+            <Route path="/" element={<HomePage />} />
+            <Route
+              path="/class/:classId/:classSlug"
+              element={<ClassPage />}
+            />
+          </Route>
+        )}
+
+        <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
     </>
   );
