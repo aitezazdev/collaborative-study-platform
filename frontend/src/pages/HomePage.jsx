@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import LiquidGlassButton from "../components/LiquadButton";
 import { useSelector } from "react-redux";
 import { useDispatch } from "react-redux";
@@ -7,8 +7,12 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import CreateClass from "../components/ui/CreateClass";
 import JoinClass from "../components/ui/JoinClass";
+import { fetchUserClasses } from "../api/classApi";
+import { FiCopy } from "react-icons/fi";
 
 const HomePage = () => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [classes, setClasses] = useState([]);
   const reduxUser = useSelector((state) => state.auth.user);
   const localUser = JSON.parse(localStorage.getItem("user"));
   const dispatch = useDispatch();
@@ -27,6 +31,30 @@ const HomePage = () => {
   const closeModal = () => {
     setActiveModal(null);
   };
+  const copyCode = (e) => {
+    const code = e.currentTarget.parentElement.textContent;
+    navigator.clipboard.writeText(code).then(() => {
+      toast.success("Join code copied to clipboard!");
+    });
+  }
+
+  const handleClassModalOpen = () => {
+    setIsModalOpen(!isModalOpen);
+  }
+
+  useEffect(() => {
+    const getUserClasses = async () => {
+      try {
+        const data = await fetchUserClasses();
+        setClasses(data.data);
+        console.log("Fetched classes:", data);
+      } catch (error) {
+        console.error("Error fetching classes:", error);
+      }
+    };
+    getUserClasses();
+  }, []);
+
 
   const handleLogout = () => {
     try {
@@ -53,10 +81,10 @@ const HomePage = () => {
               <span className="font-medium">Joined:</span>{" "}
               {user?.joined
                 ? new Date(user.joined).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                  })
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })
                 : "—"}
             </p>
             <div className="flex justify-center my-5">
@@ -71,10 +99,35 @@ const HomePage = () => {
         </div>
       </aside>
 
-      <div className="flex-1 p-8 flex flex-col items-center justify-center">
-        <p className="mt-8 text-gray-600 text-center">
-          Create a new session or join an existing one
-        </p>
+      <div className="flex-1 p-8 flex ">
+        {classes && Array.isArray(classes) && classes.length === 0 ? (
+          <h2 className="text-2xl font-semibold text-gray-700">No classes joined yet.</h2>
+        ) : (
+          <div className="w-full max-w-4xl">
+            <h2 className="text-2xl font-semibold mb-6 text-gray-700">My Classes</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.isArray(classes) && classes.map((cls) => (
+                <div key={cls._id} className="bg-white p-4 rounded-lg shadow-2xl ">
+                  <h3 className="text-xl font-semibold mb-2 text-gray-800">{cls?.title}</h3>
+                  <h2 className="text-xl  mb-2 text-gray-800">{cls?.description}</h2>
+
+                  <h2 className="text-xl mb-2 text-gray-800 flex items-center gap-2">
+                    <span>{cls?.joinCode}</span>
+
+                    <button
+                      onClick={copyCode}
+                      className="text-gray-500 hover:text-gray-800 transition cursor-pointer"
+                      title="Copy"
+                    >
+                      <FiCopy size={18}  />
+                    </button>
+                  </h2>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
       </div>
       {activeModal === "create" && (
         <CreateClass handle={closeModal} />

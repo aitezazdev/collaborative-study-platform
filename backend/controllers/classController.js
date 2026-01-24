@@ -87,7 +87,7 @@ export const joinClass = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
-
+//fetch user classes
 export const fetchUserClasses = async (req, res) => {
   const userId = req.user?._id;
   try {

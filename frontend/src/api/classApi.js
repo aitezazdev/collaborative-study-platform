@@ -17,3 +17,13 @@ export const joinClass = async (data) => {
     console.log(error);
   }
 };
+
+
+export const fetchUserClasses = async()=>{
+    try {
+        const response = await instance.get('/class/my-classes');
+        return response.data
+    } catch (error) {
+        console.log(error);
+    }
+}
