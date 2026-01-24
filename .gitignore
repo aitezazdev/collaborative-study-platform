@@ -1,6 +1,6 @@
 
 npm
-.env
+# .env
 
 node_modules/
 # Node modules
