@@ -164,7 +164,7 @@ const ClassPage = () => {
             )}
 
             <div className="px-8">
-                <Slides classId={classId} />
+                <Slides classId={classId} isTeacher={joinCode} />
             </div>
         </div>
     );

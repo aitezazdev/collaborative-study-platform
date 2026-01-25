@@ -34,3 +34,12 @@ export const deleteSlide = async (slideId) => {
     console.log(error);
   }
 };
+
+export const fetchSlideById = async (slideId) => {
+  try {
+    const response = await instance.get(`/slide/fetchSlideById/${slideId}`);
+    return response.data;
+  } catch (error) {
+    console.log(error);
+  }
+};

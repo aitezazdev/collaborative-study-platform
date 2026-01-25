@@ -6,6 +6,7 @@ import HomePage from "./pages/HomePage";
 import ClassPage from "./pages/ClassPage";
 import { ToastContainer } from "react-toastify";
 import AppLayout from "./layouts/AppLayout";
+import SlideViewer from "./components/SlideViewer";
 
 function App() {
   const token =
@@ -33,6 +34,11 @@ function App() {
               path="/class/:classId/:classSlug"
               element={<ClassPage />}
             />
+            <Route
+              path="/class/:classId/slide/:slideId"
+              element={<SlideViewer />}
+            />
+
           </Route>
         )}
 

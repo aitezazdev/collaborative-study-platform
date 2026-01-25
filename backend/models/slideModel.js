@@ -33,6 +33,10 @@ const slideSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+
+    originalFileName: { type: String },
+    fileType: { type: String },
+    convertedToPdf: { type: Boolean, default: false }
   },
   { timestamps: true }
 );

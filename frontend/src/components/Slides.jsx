@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { fetchSlidesForClass, deleteSlide } from "../api/slideApi";
+import { Link } from "react-router-dom";
 
-const Slides = ({ classId, refreshKey }) => {
+const Slides = ({ classId, isTeacher }) => {
     const [slides, setSlides] = useState([]);
     const [deletingId, setDeletingId] = useState(null);
 
@@ -16,7 +17,7 @@ const Slides = ({ classId, refreshKey }) => {
 
     useEffect(() => {
         fetchSlides();
-    }, [classId, refreshKey]);
+    }, [classId]);
 
     const handleDeleteSlide = async (slideId) => {
         if (!window.confirm("Delete this slide?")) return;
@@ -69,22 +70,23 @@ const Slides = ({ classId, refreshKey }) => {
                         </div>
 
                         <div className="flex items-center gap-3">
-                            <a
-                                href={slide.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                            <Link
+                                to={`/class/${classId}/slide/${slide._id}`}
                                 className="text-sm text-blue-600 hover:underline"
                             >
                                 View
-                            </a>
+                            </Link>
 
-                            <button
-                                onClick={() => handleDeleteSlide(slide._id)}
-                                disabled={deletingId === slide._id}
-                                className="text-sm text-red-600 hover:underline disabled:opacity-50"
-                            >
-                                {deletingId === slide._id ? "Deleting..." : "Delete"}
-                            </button>
+
+                            {isTeacher && (
+                                <button
+                                    onClick={() => handleDeleteSlide(slide._id)}
+                                    disabled={deletingId === slide._id}
+                                    className="text-sm text-red-600 hover:underline disabled:opacity-50"
+                                >
+                                    {deletingId === slide._id ? "Deleting..." : "Delete"}
+                                </button>
+                            )}
                         </div>
                     </div>
                 ))

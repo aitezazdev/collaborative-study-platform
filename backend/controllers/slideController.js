@@ -2,8 +2,12 @@ import { Class } from "../models/classModel.js";
 import { Slide } from "../models/slideModel.js";
 import cloudinary from "../config/cloudinary.js";
 import streamifier from "streamifier";
+import libre from "libreoffice-convert";
+import { promisify } from "util";
+import path from "path";
 
-// upload silde
+const libreConvert = promisify(libre.convert);
+
 export const uploadSlide = async (req, res) => {
   try {
     const userId = req.user?._id;
@@ -59,37 +63,70 @@ export const uploadSlide = async (req, res) => {
       });
     }
 
+    let fileBuffer = req.file.buffer;
+    let finalFileName = req.file.originalname;
+
+    if (fileExtension !== "pdf") {
+      try {
+        console.log(`Converting ${fileExtension} to PDF...`);
+        
+        const pdfBuffer = await libreConvert(fileBuffer, ".pdf", undefined);
+        
+        fileBuffer = pdfBuffer;
+        finalFileName = req.file.originalname.replace(
+          new RegExp(`.${fileExtension}$`),
+          ".pdf"
+        );
+        
+        console.log("Conversion successful!");
+      } catch (conversionError) {
+        console.error("Conversion Error:", conversionError);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to convert file to PDF. Please try again or upload a PDF directly.",
+          error: conversionError.message,
+        });
+      }
+    }
+
     const uploadFromBuffer = () =>
       new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
           {
             folder: `class_slides/${classId}`,
-            resource_type: "raw",
+            resource_type: "auto",
+            format: "pdf",
+            flags: "attachment",
             timeout: 120000,
           },
           (error, result) => {
             if (result) resolve(result);
             else reject(error);
-          },
+          }
         );
 
-        streamifier.createReadStream(req.file.buffer).pipe(stream);
+        streamifier.createReadStream(fileBuffer).pipe(stream);
       });
 
     const result = await uploadFromBuffer();
 
     const newSlide = await Slide.create({
-      title: title || "",
-      fileName: req.file.originalname,
+      title: title || path.parse(req.file.originalname).name,
+      fileName: finalFileName,
+      originalFileName: req.file.originalname,
       url: result.secure_url,
       public_id: result.public_id,
+      fileType: fileExtension,
+      convertedToPdf: fileExtension !== "pdf",
       class: classId,
       uploadedBy: userId,
     });
 
     res.status(201).json({
       success: true,
-      message: "Slide uploaded successfully",
+      message: fileExtension !== "pdf" 
+        ? "File converted to PDF and uploaded successfully"
+        : "Slide uploaded successfully",
       slide: newSlide,
     });
   } catch (error) {
@@ -201,3 +238,22 @@ export const fetchSlidesForClass = async (req, res) => {
     });
   }
 };
+
+
+export const fetchSlideById = async (req, res) => {
+    try {
+        const {slideId} = req.params;
+        const slide = await Slide.findById(slideId);
+        if (!slide) {
+            return res.status(404).json({ success: false, message: "Slide not found" });
+        }
+        res.status(200).json({ success: true, slide });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Server Error",
+            error: error.message,
+        });
+    }
+  }
