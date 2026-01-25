@@ -16,7 +16,7 @@ const CreateClass = ({ handle }) => {
   const handleClassSubmit = async () => {
     try {
       if (!classData.title.trim()) {
-        alert("Class Name is required");
+        toast.error("Class Name is required");
         return;
       }
       await createClass(classData);

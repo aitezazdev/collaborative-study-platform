@@ -1,21 +1,34 @@
 import { Outlet, useNavigate } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import { logout } from "../redux/slices/authSlice";
-import LiquidGlassButton from "../components/LiquadButton";
+import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { useState } from "react";
+import LiquidGlassButton from "../components/LiquadButton";
 import CreateClass from "../components/ui/CreateClass";
 import JoinClass from "../components/ui/JoinClass";
+import EditProfileModal from "../components/ui/EditProfileModal";
+import { fetchUserProfile } from "../api/userProfile";
+import { useDispatch } from "react-redux";
+import { logout } from "../redux/slices/authSlice";
 
 const AppLayout = () => {
-  const dispatch = useDispatch();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState(null);
+  const [user, setUser] = useState(() => {
+    return JSON.parse(localStorage.getItem("user")) || null;
+  });
 
-  const reduxUser = useSelector((state) => state.auth.user);
-  const localUser = JSON.parse(localStorage.getItem("user"));
-  const user = reduxUser || localUser;
+  useEffect(() => {
+    const getUser = async () => {
+      const res = await fetchUserProfile();
+      if (res.success) {
+        setUser(res.data);
+        localStorage.setItem("user", JSON.stringify(res.data));
+      }
+    };
+    getUser();
+  }, []);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -28,26 +41,55 @@ const AppLayout = () => {
       <aside className="w-72 bg-white border-r border-slate-200 p-6 flex flex-col justify-between">
         <div>
           <div className="flex flex-col items-center text-center mb-8 pb-6 border-b border-slate-200">
-            <div className="w-20 h-20 bg-blue-500 rounded-full mb-3 flex items-center justify-center text-white text-2xl font-bold">
-              {user?.name?.charAt(0).toUpperCase()}
+            {/* Avatar */}
+            <div className="w-20 h-20 rounded-full mb-3 flex items-center justify-center text-white text-2xl font-bold overflow-hidden bg-blue-500">
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt="Avatar"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                user?.name?.charAt(0).toUpperCase() || "A"
+              )}
             </div>
 
+            {/* Name */}
             <h2 className="text-xl font-semibold text-slate-900">
-              {user?.name}
+              {user?.name || "Anonymous"}
             </h2>
 
-            <p className="text-sm text-slate-600 mt-1">{user?.email}</p>
+            {/* Email */}
+            <p className="text-sm text-slate-600 mt-1">
+              {user?.email || "No email provided"}
+            </p>
 
-            {user?.joined && !isNaN(new Date(user.joined)) && (
+            {/* Bio */}
+            {user?.bio && (
+              <p className="text-xs text-slate-500 mt-1 italic">{user.bio}</p>
+            )}
+
+            {/* Joined Date */}
+            {user?.createdAt && !isNaN(new Date(user.createdAt)) && (
               <p className="text-xs text-slate-500 mt-2">
                 Joined{" "}
-                {new Date(user.joined).toLocaleDateString("en-US", {
+                {new Date(user.createdAt).toLocaleDateString("en-US", {
                   month: "long",
                   day: "numeric",
                   year: "numeric",
                 })}
               </p>
             )}
+
+            {/* Edit Profile */}
+            <button
+              onClick={() => {
+                setModalType("editProfile");
+                setIsModalOpen(true);
+              }}
+              className="mt-3 text-sm text-blue-600 underline">
+              Edit Profile
+            </button>
           </div>
 
           <div className="space-y-3">
@@ -58,7 +100,6 @@ const AppLayout = () => {
                 setIsModalOpen(true);
               }}
             />
-
             <LiquidGlassButton
               text="Join Class"
               onClick={() => {
@@ -81,9 +122,15 @@ const AppLayout = () => {
       {isModalOpen && modalType === "create" && (
         <CreateClass handle={() => setIsModalOpen(false)} />
       )}
-
       {isModalOpen && modalType === "join" && (
         <JoinClass handle={() => setIsModalOpen(false)} />
+      )}
+      {isModalOpen && modalType === "editProfile" && (
+        <EditProfileModal
+          handle={() => setIsModalOpen(false)}
+          user={user}
+          setUser={setUser}
+        />
       )}
     </div>
   );
