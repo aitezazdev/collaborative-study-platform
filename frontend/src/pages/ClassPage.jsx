@@ -71,7 +71,6 @@ const ClassPage = () => {
 
     return (
         <div>
-            {/* CLASS INFO */}
             <div className="p-8">
                 <h1 className="text-3xl font-bold text-slate-900 mb-2">
                     {cls.title}
@@ -102,7 +101,6 @@ const ClassPage = () => {
                 </button>
             </div>
 
-            {/* SLIDES SECTION */}
             <div>
 
                 <div className="px-8 flex  justify-between mb-4 items-center">
@@ -120,7 +118,6 @@ const ClassPage = () => {
                 </div>
             </div>
 
-            {/* MODAL */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg w-full max-w-md p-6">

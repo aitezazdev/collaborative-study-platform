@@ -4,6 +4,8 @@ import { toast } from "react-toastify";
 import { updateUserProfile } from "../../api/userProfile";
 
 const EditProfileModal = ({ handle, user, setUser }) => {
+  const [loading, setLoading] = useState(false);
+
   const [formData, setFormData] = useState({
     name: user.name || "",
     email: user.email || "",
@@ -13,8 +15,11 @@ const EditProfileModal = ({ handle, user, setUser }) => {
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
-    if (files) {
-      setFormData({ ...formData, avatar: files[0] });
+    if (files && files.length > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        avatar: files[0],
+      }));
     } else {
       setFormData({ ...formData, [name]: value });
     }
@@ -22,6 +27,8 @@ const EditProfileModal = ({ handle, user, setUser }) => {
 
   const handleSubmit = async () => {
     try {
+      setLoading(true);
+
       const data = new FormData();
       data.append("name", formData.name);
       data.append("email", formData.email);
@@ -29,11 +36,11 @@ const EditProfileModal = ({ handle, user, setUser }) => {
       if (formData.avatar) data.append("avatar", formData.avatar);
 
       const res = await updateUserProfile(data);
+
       if (res.success) {
         toast.success("Profile updated successfully");
 
         setUser(res.data);
-
         localStorage.setItem("user", JSON.stringify(res.data));
 
         handle();
@@ -42,6 +49,8 @@ const EditProfileModal = ({ handle, user, setUser }) => {
       }
     } catch (err) {
       toast.error(err.message || "Something went wrong");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -100,9 +109,15 @@ const EditProfileModal = ({ handle, user, setUser }) => {
       <div className="flex justify-end gap-2 mt-4">
         <button
           onClick={handleSubmit}
-          className="px-4 py-2 bg-green-500 text-white rounded">
-          Save
+          disabled={loading}
+          className={`px-4 py-2 text-white rounded transition ${
+            loading
+              ? "bg-green-400 cursor-not-allowed opacity-70"
+              : "bg-green-500 hover:bg-green-600"
+          }`}>
+          {loading ? "Updating..." : "Save"}
         </button>
+
         <button
           onClick={handle}
           className="px-4 py-2 bg-red-500 text-white rounded">
