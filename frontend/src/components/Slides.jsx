@@ -22,6 +22,8 @@ const Slides = ({ classId, isTeacher }) => {
     const handleDeleteSlide = async (slideId) => {
         if (!window.confirm("Delete this slide?")) return;
 
+        console.log(slideId)
+
         const prev = slides;
         setSlides((s) => s.filter((slide) => slide._id !== slideId));
         setDeletingId(slideId);

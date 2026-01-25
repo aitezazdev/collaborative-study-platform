@@ -1,6 +1,8 @@
 import { Class } from "../models/classModel.js";
 import crypto from "crypto";
+import { Slide } from "../models/slideModel.js";
 
+// create class
 export const createClass = async (req, res) => {
   try {
     const { title, description } = req.body;
@@ -110,3 +112,86 @@ export const fetchUserClasses = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
+
+// delete class
+export const deleteClass = async (req, res) => {
+  try {
+    const classId = req.params.id;
+
+    if (!req.user?._id) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const foundClass = await Class.findById(classId);
+
+    if (!foundClass) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Class not found" });
+    }
+
+    if (foundClass.teacher.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Only the teacher can delete the class",
+      });
+    }
+
+    const slides = await Slide.find({ class: classId });
+
+    if (slides.length > 0) {
+      for (const slide of slides) {
+        try {
+          await cloudinary.uploader.destroy(slide.public_id, {
+            resource_type: "raw",
+          });
+        } catch (cloudinaryError) {
+          console.error(
+            `Failed to delete slide ${slide.public_id} from Cloudinary:`,
+            cloudinaryError,
+          );
+        }
+      }
+    }
+
+    await Slide.deleteMany({ class: classId });
+
+    await Class.findByIdAndDelete(classId);
+
+    res.json({
+      success: true,
+      message: "Class and all associated data deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete Class Error:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+// fetch all class students
+export const fetchClassStudents = async (req, res) => {
+  try {
+    const classId = req.params.id;
+
+    if (!req.user?._id) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const foundClass = await Class.findById(classId).populate(
+      "students",
+      "name email avatar",
+    );
+
+    if (!foundClass) {
+      return res.status(404).json({ success: false, message: "Class not found" });
+    }
+
+    res.json({
+      success: true,
+      message: "Class students fetched successfully",
+      students: foundClass.students,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+}

@@ -62,28 +62,14 @@ const SlideViewer = () => {
       try {
         setRendering(true);
         
-        const response = await fetch(slide.url);
+        console.log('Loading PDF from:', slide.url);
         
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const contentType = response.headers.get('content-type');
-        console.log('Content-Type:', contentType);
-        
-        const arrayBuffer = await response.arrayBuffer();
-        
-        const uint8Array = new Uint8Array(arrayBuffer);
-        const header = String.fromCharCode(...uint8Array.slice(0, 5));
-        
-        if (header !== '%PDF-') {
-          throw new Error('The file is not a valid PDF. It may be in a different format (PPT, PPTX, etc.)');
-        }
-        
+        // Load PDF directly using URL (PDF.js handles CORS automatically)
         const loadingTask = window.pdfjsLib.getDocument({
-          data: uint8Array,
+          url: slide.url,
           cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
           cMapPacked: true,
+          withCredentials: false,
         });
         
         const pdf = await loadingTask.promise;
@@ -91,17 +77,24 @@ const SlideViewer = () => {
         setPdfDoc(pdf);
         setNumPages(pdf.numPages);
         setRendering(false);
+        setError(null);
+        
+        console.log('PDF loaded successfully. Pages:', pdf.numPages);
       } catch (err) {
         console.error("Error loading PDF:", err);
         
         let errorMessage = "Failed to load PDF document.";
         
-        if (err.message.includes('not a valid PDF')) {
-          errorMessage = "This file is not a PDF. Please convert your presentation to PDF format first.";
-        } else if (err.message.includes('HTTP error')) {
-          errorMessage = `Failed to fetch the file: ${err.message}`;
+        if (err.message?.includes('CORS')) {
+          errorMessage = "CORS error: Unable to access the PDF. The file may not be publicly accessible.";
         } else if (err.name === 'InvalidPDFException') {
           errorMessage = "The PDF file is corrupted or invalid. Please re-upload the file.";
+        } else if (err.name === 'MissingPDFException') {
+          errorMessage = "PDF file not found. The file may have been deleted.";
+        } else if (err.name === 'UnexpectedResponseException') {
+          errorMessage = "Failed to fetch PDF. The file might not be accessible.";
+        } else if (err.message) {
+          errorMessage = `Error: ${err.message}`;
         }
         
         setError(errorMessage);
@@ -121,6 +114,13 @@ const SlideViewer = () => {
         
         const page = await pdfDoc.getPage(pageNumber);
         const canvas = document.getElementById('pdf-canvas');
+        
+        if (!canvas) {
+          console.error('Canvas element not found');
+          setRendering(false);
+          return;
+        }
+        
         const context = canvas.getContext('2d');
 
         const viewport = page.getViewport({ scale });
@@ -171,12 +171,22 @@ const SlideViewer = () => {
     const viewer = document.getElementById('pdf-viewer-container');
     if (viewer.requestFullscreen) {
       viewer.requestFullscreen();
+    } else if (viewer.webkitRequestFullscreen) {
+      viewer.webkitRequestFullscreen();
+    } else if (viewer.msRequestFullscreen) {
+      viewer.msRequestFullscreen();
     }
   };
 
   const handleDownload = () => {
     if (slide?.url) {
-      window.open(slide.url, '_blank');
+      const link = document.createElement('a');
+      link.href = slide.url;
+      link.download = slide.fileName || 'slide.pdf';
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   };
 
@@ -196,7 +206,17 @@ const SlideViewer = () => {
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
           <h3 className="text-red-800 font-semibold mb-2">Error</h3>
-          <p className="text-red-600">{error}</p>
+          <p className="text-red-600 mb-4">{error}</p>
+          {slide?.url && (
+            <a 
+              href={slide.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Open in new tab
+            </a>
+          )}
         </div>
       </div>
     );
@@ -217,13 +237,10 @@ const SlideViewer = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{slide.title || 'Untitled Slide'}</h1>
-            {(slide.uploadedBy || slide.uploadedAt) && (
-              <p className="text-sm text-gray-500 mt-1">
-                {slide.uploadedBy && `Uploaded by ${slide.uploadedBy}`}
-                {slide.uploadedBy && slide.uploadedAt && ' • '}
-                {slide.uploadedAt}
-              </p>
-            )}
+            <p className="text-sm text-gray-500 mt-1">
+              {slide.fileName || 'slide.pdf'}
+              {slide.convertedToPdf && ' (Converted to PDF)'}
+            </p>
           </div>
           <button 
             onClick={handleDownload}

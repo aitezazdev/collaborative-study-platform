@@ -69,40 +69,42 @@ export const uploadSlide = async (req, res) => {
     if (fileExtension !== "pdf") {
       try {
         console.log(`Converting ${fileExtension} to PDF...`);
-        
+
         const pdfBuffer = await libreConvert(fileBuffer, ".pdf", undefined);
-        
+
         fileBuffer = pdfBuffer;
         finalFileName = req.file.originalname.replace(
           new RegExp(`.${fileExtension}$`),
-          ".pdf"
+          ".pdf",
         );
-        
+
         console.log("Conversion successful!");
       } catch (conversionError) {
         console.error("Conversion Error:", conversionError);
         return res.status(500).json({
           success: false,
-          message: "Failed to convert file to PDF. Please try again or upload a PDF directly.",
+          message:
+            "Failed to convert file to PDF. Please try again or upload a PDF directly.",
           error: conversionError.message,
         });
       }
     }
 
+    // ✅ FIXED: Use resource_type "raw" for PDFs
     const uploadFromBuffer = () =>
       new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
           {
             folder: `class_slides/${classId}`,
-            resource_type: "auto",
+            resource_type: "raw", // ✅ Changed from "image" to "raw"
             format: "pdf",
-            flags: "attachment",
+            access_mode: "public", // ✅ Ensure public access
             timeout: 120000,
           },
           (error, result) => {
             if (result) resolve(result);
             else reject(error);
-          }
+          },
         );
 
         streamifier.createReadStream(fileBuffer).pipe(stream);
@@ -124,9 +126,10 @@ export const uploadSlide = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: fileExtension !== "pdf" 
-        ? "File converted to PDF and uploaded successfully"
-        : "Slide uploaded successfully",
+      message:
+        fileExtension !== "pdf"
+          ? "File converted to PDF and uploaded successfully"
+          : "Slide uploaded successfully",
       slide: newSlide,
     });
   } catch (error) {
@@ -159,7 +162,6 @@ export const deleteSlide = async (req, res) => {
     }
 
     const slide = await Slide.findById(slideId);
-
     if (!slide) {
       return res
         .status(404)
@@ -167,7 +169,6 @@ export const deleteSlide = async (req, res) => {
     }
 
     const foundClass = await Class.findById(slide.class);
-
     if (foundClass.teacher.toString() !== userId.toString()) {
       return res.status(403).json({
         success: false,
@@ -175,16 +176,20 @@ export const deleteSlide = async (req, res) => {
       });
     }
 
-    const cloudinaryResult = await cloudinary.uploader.destroy(
-      slide.public_id,
-      { resource_type: "raw" },
-    );
-
-    if (cloudinaryResult.result !== "ok") {
-      return res.status(500).json({
-        success: false,
-        message: "Failed to delete file from Cloudinary",
-      });
+    try {
+      const cloudinaryResult = await cloudinary.uploader.destroy(
+        slide.public_id,
+        { resource_type: "raw" },
+      );
+      console.log("Cloudinary deletion result:", cloudinaryResult);
+      if (
+        cloudinaryResult.result !== "ok" &&
+        cloudinaryResult.result !== "not found"
+      ) {
+        console.warn("Unexpected Cloudinary result:", cloudinaryResult);
+      }
+    } catch (cloudinaryError) {
+      console.error("Cloudinary deletion error:", cloudinaryError);
     }
 
     await Slide.findByIdAndDelete(slideId);
@@ -239,21 +244,21 @@ export const fetchSlidesForClass = async (req, res) => {
   }
 };
 
-
 export const fetchSlideById = async (req, res) => {
-    try {
-        const {slideId} = req.params;
-        const slide = await Slide.findById(slideId);
-        if (!slide) {
-            return res.status(404).json({ success: false, message: "Slide not found" });
-        }
-        res.status(200).json({ success: true, slide });
-
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Server Error",
-            error: error.message,
-        });
+  try {
+    const { slideId } = req.params;
+    const slide = await Slide.findById(slideId);
+    if (!slide) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Slide not found" });
     }
+    res.status(200).json({ success: true, slide });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: error.message,
+    });
   }
+};
