@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from "react";
+import { useState } from "react";
 import Modal from "react-modal";
 import { createClass } from "../../api/classApi";
 import { toast } from "react-toastify";
 
-const CreateClass = ({ handle }) => {
+const CreateClass = ({ handle, refreshClasses }) => {
   const [classData, setClassData] = useState({
     title: "",
     description: "",
   });
+  const [loading, setLoading] = useState(false);
 
   const handleClassData = (e) => {
     setClassData({ ...classData, [e.target.name]: e.target.value });
@@ -19,13 +20,27 @@ const CreateClass = ({ handle }) => {
         toast.error("Class Name is required");
         return;
       }
-      await createClass(classData);
-      handle();
+
+      setLoading(true);
+      const response = await createClass(classData);
+      
+      console.log("Create class response:", response);
+      
+      if (refreshClasses) {
+        await refreshClasses();
+      }
+      
       toast.success("Class Created Successfully");
+      handle();
+      
     } catch (error) {
-      console.log(error);
+      console.log("Error creating class:", error);
+      toast.error(error.response?.data?.message || "Failed to create class");
+    } finally {
+      setLoading(false);
     }
   };
+
   return (
     <Modal
       isOpen={true}
@@ -43,6 +58,7 @@ const CreateClass = ({ handle }) => {
           name="title"
           required
           placeholder="Your Class Name"
+          value={classData.title}
           onChange={handleClassData}
         />
       </div>
@@ -55,20 +71,25 @@ const CreateClass = ({ handle }) => {
           id="description"
           name="description"
           placeholder="Your Class Description (optional)"
+          value={classData.description}
           onChange={handleClassData}
         />
       </div>
-
       <div className="flex justify-center gap-2">
         <button
           onClick={handleClassSubmit}
-          className="mt-4 px-4 py-2 bg-green-500 text-white rounded">
-          Create
+          disabled={loading}
+          className={`mt-4 px-4 py-2 text-white rounded ${
+            loading 
+              ? "bg-gray-400 cursor-not-allowed" 
+              : "bg-green-500 hover:bg-green-600"
+          }`}>
+          {loading ? "Creating..." : "Create"}
         </button>
-
         <button
           onClick={handle}
-          className="mt-4 px-4 py-2 bg-red-500 text-white rounded">
+          disabled={loading}
+          className="mt-4 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">
           Close
         </button>
       </div>

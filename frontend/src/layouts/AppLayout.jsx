@@ -15,6 +15,7 @@ const AppLayout = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [user, setUser] = useState(() => {
     return JSON.parse(localStorage.getItem("user")) || null;
   });
@@ -36,12 +37,16 @@ const AppLayout = () => {
     navigate("/login");
   };
 
+  const handleClassUpdate = () => {
+    setRefreshTrigger(prev => prev + 1);
+    setIsModalOpen(false);
+  };
+
   return (
     <div className="flex h-screen bg-slate-50">
       <aside className="w-72 bg-white border-r border-slate-200 p-6 flex flex-col justify-between">
         <div>
           <div className="flex flex-col items-center text-center mb-8 pb-6 border-b border-slate-200">
-            {/* Avatar */}
             <div className="w-20 h-20 rounded-full mb-3 flex items-center justify-center text-white text-2xl font-bold overflow-hidden bg-blue-500">
               {user?.avatar ? (
                 <img
@@ -54,22 +59,18 @@ const AppLayout = () => {
               )}
             </div>
 
-            {/* Name */}
             <h2 className="text-xl font-semibold text-slate-900">
               {user?.name || "Anonymous"}
             </h2>
 
-            {/* Email */}
             <p className="text-sm text-slate-600 mt-1">
               {user?.email || "No email provided"}
             </p>
 
-            {/* Bio */}
             {user?.bio && (
               <p className="text-xs text-slate-500 mt-1 italic">{user.bio}</p>
             )}
 
-            {/* Joined Date */}
             {user?.createdAt && !isNaN(new Date(user.createdAt)) && (
               <p className="text-xs text-slate-500 mt-2">
                 Joined{" "}
@@ -81,7 +82,6 @@ const AppLayout = () => {
               </p>
             )}
 
-            {/* Edit Profile */}
             <button
               onClick={() => {
                 setModalType("editProfile");
@@ -116,14 +116,20 @@ const AppLayout = () => {
       </aside>
 
       <main className="flex-1 p-8 overflow-auto">
-        <Outlet />
+        <Outlet context={{ refreshTrigger }} />
       </main>
 
       {isModalOpen && modalType === "create" && (
-        <CreateClass handle={() => setIsModalOpen(false)} />
+        <CreateClass
+          handle={() => setIsModalOpen(false)}
+          refreshClasses={handleClassUpdate}
+        />
       )}
       {isModalOpen && modalType === "join" && (
-        <JoinClass handle={() => setIsModalOpen(false)} />
+        <JoinClass
+          handle={() => setIsModalOpen(false)}
+          refreshClasses={handleClassUpdate}
+        />
       )}
       {isModalOpen && modalType === "editProfile" && (
         <EditProfileModal

@@ -1,36 +1,33 @@
 import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import { toast } from "react-toastify";
-import CreateClass from "../components/ui/CreateClass";
-import JoinClass from "../components/ui/JoinClass";
 import { fetchUserClasses } from "../api/classApi";
 import { FiCopy } from "react-icons/fi";
 
 const HomePage = () => {
   const [classes, setClasses] = useState([]);
-  const [activeModal, setActiveModal] = useState(null);
-
+  const { refreshTrigger } = useOutletContext();
   const reduxUser = useSelector((state) => state.auth.user);
   const localUser = JSON.parse(localStorage.getItem("user"));
   const user = reduxUser || localUser;
 
   const navigate = useNavigate();
 
-  const slugify = (text) =>
-    text.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  const slugify = (text) => text.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+
+  const getUserClasses = async () => {
+    try {
+      const data = await fetchUserClasses();
+      setClasses(data.data || []);
+    } catch (error) {
+      console.error("Error fetching classes:", error);
+    }
+  };
 
   useEffect(() => {
-    const getUserClasses = async () => {
-      try {
-        const data = await fetchUserClasses();
-        setClasses(data.data);
-      } catch (error) {
-        console.error("Error fetching classes:", error);
-      }
-    };
     getUserClasses();
-  }, []);
+  }, [refreshTrigger]);
 
   const copyCode = (code) => {
     navigator.clipboard.writeText(code);
@@ -47,10 +44,9 @@ const HomePage = () => {
       const teacherId = cls.teacher?._id || cls.teacher?.id;
       const isTeacher = teacherId === currentUserId;
 
-      const isStudent =
-        cls.students?.some(
-          (student) => (student._id || student.id) === currentUserId
-        );
+      const isStudent = cls.students?.some(
+        (student) => (student._id || student.id) === currentUserId,
+      );
 
       if (isTeacher) teacherClasses.push(cls);
       else if (isStudent) studentClasses.push(cls);
@@ -69,20 +65,16 @@ const HomePage = () => {
             {teacherClasses.map((cls) => (
               <div
                 key={cls._id}
-                className="bg-white rounded-lg border border-slate-200 p-6 hover:shadow-md transition"
-              >
+                className="bg-white rounded-lg border border-slate-200 p-6 hover:shadow-md transition">
                 <h3
                   onClick={() =>
                     navigate(`/class/${cls._id}/${slugify(cls.title)}`)
                   }
-                  className="text-xl font-semibold text-blue-600 hover:underline cursor-pointer mb-2"
-                >
+                  className="text-xl font-semibold text-blue-600 hover:underline cursor-pointer mb-2">
                   {cls.title}
                 </h3>
 
-                <p className="text-sm text-slate-600 mb-4">
-                  {cls.description}
-                </p>
+                <p className="text-sm text-slate-600 mb-4">{cls.description}</p>
 
                 <div className="flex items-center justify-between mb-4">
                   <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
@@ -103,8 +95,7 @@ const HomePage = () => {
 
                   <button
                     onClick={() => copyCode(cls.joinCode)}
-                    className="text-blue-600 hover:text-blue-700"
-                  >
+                    className="text-blue-600 hover:text-blue-700">
                     <FiCopy size={18} />
                   </button>
                 </div>
@@ -129,20 +120,16 @@ const HomePage = () => {
             {studentClasses.map((cls) => (
               <div
                 key={cls._id}
-                className="bg-white rounded-lg border border-slate-200 p-6 hover:shadow-md transition"
-              >
+                className="bg-white rounded-lg border border-slate-200 p-6 hover:shadow-md transition">
                 <h3
                   onClick={() =>
                     navigate(`/class/${cls._id}/${slugify(cls.title)}`)
                   }
-                  className="text-xl font-semibold text-blue-600 hover:underline cursor-pointer mb-2"
-                >
+                  className="text-xl font-semibold text-blue-600 hover:underline cursor-pointer mb-2">
                   {cls.title}
                 </h3>
 
-                <p className="text-sm text-slate-600 mb-4">
-                  {cls.description}
-                </p>
+                <p className="text-sm text-slate-600 mb-4">{cls.description}</p>
 
                 <div className="flex items-center justify-between mb-4">
                   <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
@@ -174,13 +161,6 @@ const HomePage = () => {
             No classes yet. Create or join a class to get started.
           </p>
         </div>
-      )}
-
-      {activeModal === "create" && (
-        <CreateClass handle={() => setActiveModal(null)} />
-      )}
-      {activeModal === "join" && (
-        <JoinClass handle={() => setActiveModal(null)} />
       )}
     </>
   );
