@@ -138,11 +138,19 @@ export const deleteSlide = async (req, res) => {
       });
     }
 
-    await cloudinary.uploader.destroy(slide.public_id, {
-      resource_type: "raw",
-    });
+    const cloudinaryResult = await cloudinary.uploader.destroy(
+      slide.public_id,
+      { resource_type: "raw" },
+    );
 
-    await slide.remove();
+    if (cloudinaryResult.result !== "ok") {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to delete file from Cloudinary",
+      });
+    }
+
+    await Slide.findByIdAndDelete(slideId);
 
     res
       .status(200)
@@ -165,31 +173,31 @@ export const fetchSlidesForClass = async (req, res) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    if (!classId) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Class ID is required" });
-    }
-
-    const foundClass = await Class.findById(classId);
-
-    if (!foundClass) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Class not found" });
-    }
-
-    const slides = await Slide.find({ class: classId }).sort({ createdAt: -1 });
+    const slides = await Slide.find({ class: classId })
+      .populate({
+        path: "class",
+        select: "title teacher",
+        populate: {
+          path: "teacher",
+          select: "name email",
+        },
+      })
+      .populate({
+        path: "uploadedBy",
+        select: "name email",
+      })
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
-      message: "Slides fetched successfully",
       slides,
     });
   } catch (error) {
     console.error("Fetch Slides Error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Server Error", error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: error.message,
+    });
   }
 };
