@@ -26,6 +26,7 @@ const ClassPage = () => {
     const [uploading, setUploading] = useState(false);
     const [loadingStudents, setLoadingStudents] = useState(false);
     const [loadingClass, setLoadingClass] = useState(true);
+    const [slidesRefreshTrigger, setSlidesRefreshTrigger] = useState(0);
 
     const reduxUser = useSelector((state) => state.auth.user);
     const localUser = JSON.parse(localStorage.getItem("user"));
@@ -93,10 +94,15 @@ const ClassPage = () => {
         try {
             setUploading(true);
             const response = await uploadSlide(classId, formData);
-            toast.success("Slide uploaded successfully");
-            setShowUploadModal(false);
-            setSelectedFile(null);
-            setTitle("");
+            if (response.success) {
+                toast.success("Slide uploaded successfully");
+                setShowUploadModal(false);
+                setSelectedFile(null);
+                setTitle("");
+                setSlidesRefreshTrigger(prev => prev + 1);
+            } else {
+                toast.error(response.message || "Failed to upload slide");
+            }
         } catch (err) {
             console.error("Upload failed", err);
             toast.error("Failed to upload slide");
@@ -160,7 +166,11 @@ const ClassPage = () => {
                     </p>
                 </div>
 
-                <Slides classId={classId} isTeacher={isTeacher} />
+                <Slides 
+                    classId={classId} 
+                    isTeacher={isTeacher}
+                    refreshTrigger={slidesRefreshTrigger}
+                />
             </div>
 
             <StudentsSidebar

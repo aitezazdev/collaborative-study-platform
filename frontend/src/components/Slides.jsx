@@ -3,9 +3,10 @@ import { fetchSlidesForClass, deleteSlide } from "../api/slideApi";
 import { Link } from "react-router-dom";
 import { FiFile, FiFileText, FiTrash2, FiEye } from "react-icons/fi";
 import { ClipLoader } from "react-spinners";
+import { toast } from "react-toastify";
 import ConfirmationModal from "../components/ui/ConfirmationModal";
 
-const Slides = ({ classId, isTeacher }) => {
+const Slides = ({ classId, isTeacher, refreshTrigger }) => {
   const [slides, setSlides] = useState([]);
   const [deletingId, setDeletingId] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -19,6 +20,7 @@ const Slides = ({ classId, isTeacher }) => {
       setSlides(data.slides || []);
     } catch (error) {
       console.error("Error fetching slides:", error);
+      toast.error("Failed to load slides");
     } finally {
       setLoading(false);
     }
@@ -26,7 +28,7 @@ const Slides = ({ classId, isTeacher }) => {
 
   useEffect(() => {
     fetchSlides();
-  }, [classId]);
+  }, [classId, refreshTrigger]);
 
   const handleDeleteClick = (slide) => {
     setSelectedSlide(slide);
@@ -36,15 +38,20 @@ const Slides = ({ classId, isTeacher }) => {
   const handleDeleteSlide = async () => {
     const slideId = selectedSlide._id;
     const prev = slides;
-    setSlides((s) => s.filter((slide) => slide._id !== slideId));
     setDeletingId(slideId);
-    setShowDeleteModal(false);
 
     try {
-      await deleteSlide(slideId);
+      const result = await deleteSlide(slideId);
+      if (result.success) {
+        setSlides((s) => s.filter((slide) => slide._id !== slideId));
+        toast.success("Slide deleted successfully");
+        setShowDeleteModal(false);
+      } else {
+        toast.error(result.message || "Failed to delete slide");
+      }
     } catch (error) {
       console.error(error);
-      setSlides(prev);
+      toast.error("Failed to delete slide");
     } finally {
       setDeletingId(null);
     }
