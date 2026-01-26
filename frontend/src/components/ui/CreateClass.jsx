@@ -20,19 +20,14 @@ const CreateClass = ({ handle, refreshClasses }) => {
         toast.error("Class Name is required");
         return;
       }
-
       setLoading(true);
       const response = await createClass(classData);
-      
       console.log("Create class response:", response);
-      
       if (refreshClasses) {
         await refreshClasses();
       }
-      
       toast.success("Class Created Successfully");
       handle();
-      
     } catch (error) {
       console.log("Error creating class:", error);
       toast.error(error.response?.data?.message || "Failed to create class");
@@ -45,53 +40,66 @@ const CreateClass = ({ handle, refreshClasses }) => {
     <Modal
       isOpen={true}
       onRequestClose={handle}
-      className="bg-white p-6 rounded-lg shadow-lg w-100 outline-none"
-      overlayClassName="fixed inset-0 bg-black/50 flex items-center justify-center">
-      <h2 className="text-xl font-semibold mb-4">Create Your Class</h2>
-      <div className="my-6 flex flex-col">
-        <label htmlFor="title">Class Name:</label>
-        <input
-          type="text"
-          autoComplete="off"
-          className="outline-none px-3 py-2 border border-gray-300 rounded-md mx-2"
-          id="title"
-          name="title"
-          required
-          placeholder="Your Class Name"
-          value={classData.title}
-          onChange={handleClassData}
-        />
-      </div>
-      <div className="my-6 flex flex-col">
-        <label htmlFor="description">Description:</label>
-        <input
-          type="text"
-          autoComplete="off"
-          className="outline-none px-3 py-2 border border-gray-300 rounded-md mx-2"
-          id="description"
-          name="description"
-          placeholder="Your Class Description (optional)"
-          value={classData.description}
-          onChange={handleClassData}
-        />
-      </div>
-      <div className="flex justify-center gap-2">
-        <button
-          onClick={handleClassSubmit}
-          disabled={loading}
-          className={`mt-4 px-4 py-2 text-white rounded ${
-            loading 
-              ? "bg-gray-400 cursor-not-allowed" 
-              : "bg-green-500 hover:bg-green-600"
-          }`}>
-          {loading ? "Creating..." : "Create"}
-        </button>
-        <button
-          onClick={handle}
-          disabled={loading}
-          className="mt-4 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">
-          Close
-        </button>
+      className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 outline-none"
+      overlayClassName="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="p-6">
+        <div className="mb-5">
+          <h2 className="text-xl font-bold text-gray-800">Create Your Class</h2>
+          <p className="text-sm text-gray-500 mt-1">Set up a new class for your students</p>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="title" className="text-sm font-medium text-gray-700">
+              Class Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              autoComplete="off"
+              className="outline-none px-3 py-2.5 border border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-100 transition-all"
+              id="title"
+              name="title"
+              required
+              placeholder="e.g., Advanced Mathematics"
+              value={classData.title}
+              onChange={handleClassData}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="description" className="text-sm font-medium text-gray-700">
+              Description
+            </label>
+            <textarea
+              autoComplete="off"
+              className="outline-none px-3 py-2.5 border border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-100 transition-all min-h-20 resize-none"
+              id="description"
+              name="description"
+              placeholder="Optional class description"
+              value={classData.description}
+              onChange={handleClassData}
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-2 mt-6">
+          <button
+            onClick={handleClassSubmit}
+            disabled={loading}
+            className={`flex-1 px-4 py-2.5 text-white font-medium rounded-lg transition-all ${
+              loading
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-green-600 hover:bg-green-700"
+            }`}>
+            {loading ? "Creating..." : "Create Class"}
+          </button>
+          <button
+            onClick={handle}
+            disabled={loading}
+            className="px-4 py-2.5 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 transition-all">
+            Cancel
+          </button>
+        </div>
       </div>
     </Modal>
   );

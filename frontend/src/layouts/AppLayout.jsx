@@ -7,16 +7,17 @@ import { fetchUserProfile } from "../api/userProfile";
 import CreateClass from "../components/ui/CreateClass";
 import JoinClass from "../components/ui/JoinClass";
 import EditProfileModal from "../components/ui/EditProfileModal";
-import { 
-  FiHome, 
+import {
+  FiHome,
   FiLogOut,
-  FiPlus, 
+  FiPlus,
   FiUserPlus,
   FiBookOpen,
   FiCalendar,
   FiSettings,
-  FiChevronRight
+  FiChevronRight,
 } from "react-icons/fi";
+import ConfirmationModal from "../components/ui/ConfirmationModal";
 
 const AppLayout = () => {
   const navigate = useNavigate();
@@ -26,6 +27,7 @@ const AppLayout = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [user, setUser] = useState(() => {
     return JSON.parse(localStorage.getItem("user")) || null;
   });
@@ -45,10 +47,11 @@ const AppLayout = () => {
     dispatch(logout());
     toast.success("Logged out successfully");
     navigate("/login");
+    setShowLogoutConfirm(false);
   };
 
   const handleClassUpdate = () => {
-    setRefreshTrigger(prev => prev + 1);
+    setRefreshTrigger((prev) => prev + 1);
     setIsModalOpen(false);
   };
 
@@ -59,7 +62,6 @@ const AppLayout = () => {
   return (
     <div className="flex h-screen bg-slate-50">
       <aside className="w-80 bg-white border-r border-slate-200 flex flex-col shadow-sm">
-
         <div className="flex-1 overflow-y-auto">
           <div className="p-6 border-b border-slate-200">
             <div className="flex flex-col items-center text-center">
@@ -80,8 +82,7 @@ const AppLayout = () => {
                     setModalType("editProfile");
                     setIsModalOpen(true);
                   }}
-                  className="absolute bottom-0 right-0 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white hover:bg-blue-700 transition-colors shadow-lg"
-                >
+                  className="absolute bottom-0 right-0 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white hover:bg-blue-700 transition-colors shadow-lg">
                   <FiSettings size={14} />
                 </button>
               </div>
@@ -128,8 +129,7 @@ const AppLayout = () => {
                   isActivePath("/")
                     ? "bg-blue-50 text-blue-700 font-medium"
                     : "text-slate-700 hover:bg-slate-50"
-                }`}
-              >
+                }`}>
                 <FiHome size={18} />
                 <span>My Classes</span>
                 {isActivePath("/") && (
@@ -151,8 +151,7 @@ const AppLayout = () => {
                   setModalType("create");
                   setIsModalOpen(true);
                 }}
-                className="w-full flex items-center gap-3 px-4 py-3 bg-linear-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm hover:shadow-md"
-              >
+                className="w-full flex items-center gap-3 px-4 py-3 bg-linear-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-sm hover:shadow-md">
                 <FiPlus size={18} />
                 <span className="font-medium">Create Class</span>
               </button>
@@ -161,8 +160,7 @@ const AppLayout = () => {
                   setModalType("join");
                   setIsModalOpen(true);
                 }}
-                className="w-full flex items-center gap-3 px-4 py-3 bg-white text-slate-700 rounded-lg hover:bg-slate-50 transition-all border border-slate-200 hover:border-slate-300"
-              >
+                className="w-full flex items-center gap-3 px-4 py-3 bg-white text-slate-700 rounded-lg hover:bg-slate-50 transition-all border border-slate-200 hover:border-slate-300">
                 <FiUserPlus size={18} />
                 <span className="font-medium">Join Class</span>
               </button>
@@ -172,9 +170,8 @@ const AppLayout = () => {
 
         <div className="p-4 border-t border-slate-200 bg-slate-50">
           <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-all"
-          >
+            onClick={() => setShowLogoutConfirm(true)}
+            className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-all">
             <FiLogOut size={18} />
             <span className="font-medium">Logout</span>
           </button>
@@ -184,6 +181,17 @@ const AppLayout = () => {
       <main className="flex-1 overflow-auto">
         <Outlet context={{ refreshTrigger }} />
       </main>
+
+      <ConfirmationModal
+        isOpen={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={handleLogout}
+        title="Logout"
+        message="You will be logged out of your account and redirected to the login page."
+        confirmText="Logout"
+        cancelText="Cancel"
+        type="danger"
+      />
 
       {isModalOpen && modalType === "create" && (
         <CreateClass
