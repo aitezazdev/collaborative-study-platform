@@ -1,5 +1,3 @@
-// src/components/ClassHeader.jsx
-import React from 'react';
 import { FiChevronLeft, FiBookOpen, FiUser, FiUsers, FiCopy, FiUpload } from 'react-icons/fi';
 
 const ClassHeader = ({ cls, isTeacher, students, onBack, onCopyJoinCode, onToggleStudents, onUploadSlide }) => {

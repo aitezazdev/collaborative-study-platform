@@ -1,5 +1,3 @@
-// src/components/StudentDetailsModal.jsx
-import React from 'react';
 import Modal from 'react-modal';
 import { FiX, FiMail, FiUser } from 'react-icons/fi';
 

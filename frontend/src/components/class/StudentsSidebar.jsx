@@ -1,5 +1,3 @@
-// src/components/StudentsSidebar.jsx
-import React from 'react';
 import { FiUsers, FiX } from 'react-icons/fi';
 
 const StudentsSidebar = ({ isOpen, students, loading, onClose, onStudentClick }) => {

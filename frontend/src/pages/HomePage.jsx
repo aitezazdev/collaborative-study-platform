@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -135,7 +135,6 @@ const HomePage = () => {
                 key={cls._id}
                 className="bg-white rounded-lg border border-slate-200 p-6 hover:shadow-md transition relative">
                 
-                {/* Three Dot Menu */}
                 <div className="absolute top-4 right-4">
                   <button
                     onClick={() => setShowMenu(showMenu === cls._id ? null : cls._id)}

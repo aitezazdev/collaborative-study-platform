@@ -1,5 +1,3 @@
-// src/components/UploadSlideModal.jsx
-import React from 'react';
 import Modal from 'react-modal';
 import { FiX, FiUpload } from 'react-icons/fi';
 
