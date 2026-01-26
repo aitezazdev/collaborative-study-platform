@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Loader2, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2, Download, FileText } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2, Download, FileText, MessageSquare, X, Send } from "lucide-react";
 import { fetchSlideById } from "../api/slideApi";
 
 const SlideViewer = () => {
@@ -14,6 +14,9 @@ const SlideViewer = () => {
   const [error, setError] = useState(null);
   const [pdfDoc, setPdfDoc] = useState(null);
   const [rendering, setRendering] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const [newComment, setNewComment] = useState("");
+  const [comments, setComments] = useState([]);
 
   useEffect(() => {
     const loadPdfJs = async () => {
@@ -34,7 +37,6 @@ const SlideViewer = () => {
     loadPdfJs();
   }, []);
 
-  // Fetch slide data
   useEffect(() => {
     const loadSlide = async () => {
       try {
@@ -64,7 +66,6 @@ const SlideViewer = () => {
         
         console.log('Loading PDF from:', slide.url);
         
-        // Load PDF directly using URL (PDF.js handles CORS automatically)
         const loadingTask = window.pdfjsLib.getDocument({
           url: slide.url,
           cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
@@ -190,12 +191,29 @@ const SlideViewer = () => {
     }
   };
 
+  const handlePostComment = () => {
+    if (!newComment.trim()) return;
+    
+    const comment = {
+      id: Date.now(),
+      text: newComment,
+      author: "Current User",
+      timestamp: new Date().toISOString(),
+      page: pageNumber
+    };
+    
+    setComments([comment, ...comments]);
+    setNewComment("");
+  };
+
+  const pageComments = comments.filter(c => c.page === pageNumber);
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600 font-medium">Loading slide...</p>
+          <p className="text-slate-600 font-medium">Loading slide...</p>
         </div>
       </div>
     );
@@ -203,7 +221,7 @@ const SlideViewer = () => {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
           <h3 className="text-red-800 font-semibold mb-2">Error</h3>
           <p className="text-red-600 mb-4">{error}</p>
@@ -224,55 +242,68 @@ const SlideViewer = () => {
 
   if (!slide) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <p className="text-gray-600">No slide found.</p>
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+        <p className="text-slate-600">No slide found.</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
+    <div className="min-h-screen bg-slate-50">
+      <div className="bg-white border-b border-slate-200 px-6 py-4">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{slide.title || 'Untitled Slide'}</h1>
-            <p className="text-sm text-gray-500 mt-1">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-bold text-slate-900 truncate">{slide.title || 'Untitled Slide'}</h1>
+            <p className="text-sm text-slate-500 mt-1 truncate">
               {slide.fileName || 'slide.pdf'}
               {slide.convertedToPdf && ' (Converted to PDF)'}
             </p>
           </div>
-          <button 
-            onClick={handleDownload}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            Download
-          </button>
+          <div className="flex items-center gap-3 ml-4">
+            <button 
+              onClick={() => setShowComments(!showComments)}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors relative"
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span>Comments</span>
+              {comments.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                  {comments.length}
+                </span>
+              )}
+            </button>
+            <button 
+              onClick={handleDownload}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              <span>Download</span>
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="flex gap-6 p-6 max-w-screen-2xl mx-auto">
-        <div className="flex-1 bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+        <div className={`flex-1 bg-white rounded-lg shadow-sm border border-slate-200 transition-all duration-300 ${showComments ? 'mr-0' : ''}`}>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
             <div className="flex items-center gap-2">
               <button
                 onClick={handlePrevPage}
                 disabled={pageNumber <= 1}
-                className="p-2 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="p-2 rounded hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 title="Previous page"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
               
-              <span className="text-sm font-medium px-3 py-1 bg-gray-100 rounded">
+              <span className="text-sm font-medium px-3 py-1 bg-slate-100 rounded">
                 {pageNumber} / {numPages || '...'}
               </span>
               
               <button
                 onClick={handleNextPage}
                 disabled={!numPages || pageNumber >= numPages}
-                className="p-2 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="p-2 rounded hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 title="Next page"
               >
                 <ChevronRight className="w-5 h-5" />
@@ -283,20 +314,20 @@ const SlideViewer = () => {
               <button
                 onClick={handleZoomOut}
                 disabled={scale <= 0.5}
-                className="p-2 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="p-2 rounded hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 title="Zoom out"
               >
                 <ZoomOut className="w-5 h-5" />
               </button>
               
-              <span className="text-sm font-medium px-3 py-1 bg-gray-100 rounded min-w-[60px] text-center">
+              <span className="text-sm font-medium px-3 py-1 bg-slate-100 rounded min-w-15 text-center">
                 {Math.round(scale * 100)}%
               </span>
               
               <button
                 onClick={handleZoomIn}
                 disabled={scale >= 3.0}
-                className="p-2 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="p-2 rounded hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 title="Zoom in"
               >
                 <ZoomIn className="w-5 h-5" />
@@ -304,17 +335,17 @@ const SlideViewer = () => {
 
               <button
                 onClick={handleResetZoom}
-                className="px-3 py-1 text-sm rounded hover:bg-gray-100 transition-colors"
+                className="px-3 py-1 text-sm rounded hover:bg-slate-100 transition-colors"
                 title="Reset zoom"
               >
                 Reset
               </button>
 
-              <div className="w-px h-6 bg-gray-300 mx-1"></div>
+              <div className="w-px h-6 bg-slate-300 mx-1"></div>
 
               <button
                 onClick={handleFullscreen}
-                className="p-2 rounded hover:bg-gray-100 transition-colors"
+                className="p-2 rounded hover:bg-slate-100 transition-colors"
                 title="Fullscreen"
               >
                 <Maximize2 className="w-5 h-5" />
@@ -324,8 +355,8 @@ const SlideViewer = () => {
 
           <div 
             id="pdf-viewer-container" 
-            className="overflow-auto p-6 bg-gray-100"
-            style={{ maxHeight: 'calc(100vh - 280px)' }}
+            className="overflow-auto p-6 bg-slate-100"
+            style={{ height: 'calc(100vh - 230px)' }}
           >
             <div className="flex justify-center">
               <div className="bg-white shadow-lg relative">
@@ -340,35 +371,89 @@ const SlideViewer = () => {
           </div>
         </div>
 
-        <div className="w-96 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col" style={{ maxHeight: 'calc(100vh - 180px)' }}>
-          <div className="px-4 py-3 border-b border-gray-200">
-            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              Comments (Page {pageNumber})
-            </h3>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-4">
-            <div className="text-center py-12">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <FileText className="w-8 h-8 text-gray-400" />
+        {showComments && (
+          <>
+            <div 
+              className="fixed inset-0 bg-black/20 z-30 lg:hidden"
+              onClick={() => setShowComments(false)}
+            />
+            <div className="fixed lg:relative right-0 top-0 lg:top-auto w-96 bg-white rounded-lg shadow-xl lg:shadow-sm border border-slate-200 flex flex-col z-40" 
+                 style={{ height: 'calc(100vh - 180px)' }}>
+              <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                <h3 className="font-semibold text-slate-900 flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-blue-600" />
+                  <span>Comments</span>
+                  <span className="text-xs text-slate-500">(Page {pageNumber})</span>
+                </h3>
+                <button
+                  onClick={() => setShowComments(false)}
+                  className="lg:hidden p-1 hover:bg-slate-100 rounded transition-colors"
+                >
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
               </div>
-              <p className="text-sm text-gray-500 mb-1">No comments yet</p>
-              <p className="text-xs text-gray-400">Be the first to comment on this page</p>
-            </div>
-          </div>
 
-          <div className="p-4 border-t border-gray-200">
-            <textarea
-              placeholder="Add a comment..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              rows="3"
-            ></textarea>
-            <button className="w-full mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
-              Post Comment
-            </button>
-          </div>
-        </div>
+              <div className="flex-1 overflow-y-auto p-4">
+                {pageComments.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                      <MessageSquare className="w-8 h-8 text-slate-400" />
+                    </div>
+                    <p className="text-sm text-slate-600 font-medium mb-1">No comments yet</p>
+                    <p className="text-xs text-slate-500">Be the first to comment on this page</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {pageComments.map((comment) => (
+                      <div key={comment.id} className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold shrink-0">
+                            {comment.author.charAt(0)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm font-medium text-slate-900">{comment.author}</span>
+                              <span className="text-xs text-slate-500">
+                                {new Date(comment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <p className="text-sm text-slate-700 leading-relaxed">{comment.text}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="p-4 border-t border-slate-200 bg-slate-50">
+                <div className="flex gap-2">
+                  <textarea
+                    placeholder="Add a comment..."
+                    className="flex-1 px-3 py-2 border border-slate-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                    rows="3"
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handlePostComment();
+                      }
+                    }}
+                  ></textarea>
+                </div>
+                <button 
+                  onClick={handlePostComment}
+                  disabled={!newComment.trim()}
+                  className="w-full mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm flex items-center justify-center gap-2"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>Post Comment</span>
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

@@ -2,11 +2,22 @@ import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { toast } from "react-toastify";
-import { fetchUserClasses } from "../api/classApi";
-import { FiCopy } from "react-icons/fi";
+import { fetchUserClasses, deleteClass, updateClass } from "../api/classApi";
+import { FiCopy, FiMoreVertical } from "react-icons/fi";
+import Modal from "react-modal";
 
 const HomePage = () => {
   const [classes, setClasses] = useState([]);
+  const [showMenu, setShowMenu] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedClass, setSelectedClass] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+  });
+  
   const { refreshTrigger } = useOutletContext();
   const reduxUser = useSelector((state) => state.auth.user);
   const localUser = JSON.parse(localStorage.getItem("user"));
@@ -32,6 +43,63 @@ const HomePage = () => {
   const copyCode = (code) => {
     navigator.clipboard.writeText(code);
     toast.success("Join code copied!");
+  };
+
+  const handleEditClick = (cls) => {
+    setSelectedClass(cls);
+    setFormData({
+      title: cls.title || "",
+      description: cls.description || "",
+    });
+    setShowEditModal(true);
+    setShowMenu(null);
+  };
+
+  const handleDeleteClick = (cls) => {
+    setSelectedClass(cls);
+    setShowDeleteModal(true);
+    setShowMenu(null);
+  };
+
+  const handleUpdateClass = async () => {
+    try {
+      setLoading(true);
+      const res = await updateClass(selectedClass._id, formData);
+      if (res.success) {
+        toast.success("Class updated successfully");
+        getUserClasses();
+        setShowEditModal(false);
+      } else {
+        toast.error(res.message || "Failed to update class");
+      }
+    } catch (err) {
+      toast.error(err.message || "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteClass = async () => {
+    try {
+      setLoading(true);
+      const res = await deleteClass(selectedClass._id);
+      if (res.success) {
+        toast.success("Class deleted successfully");
+        getUserClasses();
+        setShowDeleteModal(false);
+      } else {
+        toast.error(res.message || "Failed to delete class");
+      }
+    } catch (err) {
+      toast.error(err.message || "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
   };
 
   const currentUserId = user?._id || user?.id;
@@ -65,12 +133,37 @@ const HomePage = () => {
             {teacherClasses.map((cls) => (
               <div
                 key={cls._id}
-                className="bg-white rounded-lg border border-slate-200 p-6 hover:shadow-md transition">
+                className="bg-white rounded-lg border border-slate-200 p-6 hover:shadow-md transition relative">
+                
+                {/* Three Dot Menu */}
+                <div className="absolute top-4 right-4">
+                  <button
+                    onClick={() => setShowMenu(showMenu === cls._id ? null : cls._id)}
+                    className="text-slate-600 hover:text-slate-900 p-1">
+                    <FiMoreVertical size={20} />
+                  </button>
+                  
+                  {showMenu === cls._id && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 z-10">
+                      <button
+                        onClick={() => handleEditClick(cls)}
+                        className="w-full text-left px-4 py-2 hover:bg-slate-50 text-slate-700 rounded-t-lg">
+                        Edit Class
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(cls)}
+                        className="w-full text-left px-4 py-2 hover:bg-slate-50 text-red-600 rounded-b-lg">
+                        Delete Class
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 <h3
                   onClick={() =>
                     navigate(`/class/${cls._id}/${slugify(cls.title)}`)
                   }
-                  className="text-xl font-semibold text-blue-600 hover:underline cursor-pointer mb-2">
+                  className="text-xl font-semibold text-blue-600 hover:underline cursor-pointer mb-2 pr-8">
                   {cls.title}
                 </h3>
 
@@ -161,6 +254,89 @@ const HomePage = () => {
             No classes yet. Create or join a class to get started.
           </p>
         </div>
+      )}
+
+      <Modal
+        isOpen={showEditModal}
+        onRequestClose={() => setShowEditModal(false)}
+        className="bg-white p-6 rounded-lg shadow-lg w-100 max-w-md mx-auto outline-none"
+        overlayClassName="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <h2 className="text-xl font-semibold mb-4">Edit Class</h2>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col">
+            <label className="mb-1 text-sm font-medium text-slate-700">Title</label>
+            <input
+              type="text"
+              name="title"
+              value={formData.title}
+              onChange={handleChange}
+              className="outline-none px-3 py-2 border border-gray-300 rounded-md focus:border-blue-500"
+            />
+          </div>
+          <div className="flex flex-col">
+            <label className="mb-1 text-sm font-medium text-slate-700">Description</label>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              rows={4}
+              className="outline-none px-3 py-2 border border-gray-300 rounded-md focus:border-blue-500"
+            />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 mt-6">
+          <button
+            onClick={handleUpdateClass}
+            disabled={loading}
+            className={`px-4 py-2 text-white rounded transition ${
+              loading
+                ? "bg-blue-400 cursor-not-allowed opacity-70"
+                : "bg-blue-500 hover:bg-blue-600"
+            }`}>
+            {loading ? "Updating..." : "Save"}
+          </button>
+          <button
+            onClick={() => setShowEditModal(false)}
+            className="px-4 py-2 bg-slate-500 text-white rounded hover:bg-slate-600">
+            Cancel
+          </button>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showDeleteModal}
+        onRequestClose={() => setShowDeleteModal(false)}
+        className="bg-white p-6 rounded-lg shadow-lg w-100 max-w-md mx-auto outline-none"
+        overlayClassName="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <h2 className="text-xl font-semibold mb-4">Delete Class</h2>
+        <p className="text-slate-600 mb-6">
+          Are you sure you want to delete "<span className="font-semibold">{selectedClass?.title}</span>"? 
+          This action cannot be undone and will delete all associated data.
+        </p>
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={handleDeleteClass}
+            disabled={loading}
+            className={`px-4 py-2 text-white rounded transition ${
+              loading
+                ? "bg-red-400 cursor-not-allowed opacity-70"
+                : "bg-red-500 hover:bg-red-600"
+            }`}>
+            {loading ? "Deleting..." : "Delete"}
+          </button>
+          <button
+            onClick={() => setShowDeleteModal(false)}
+            className="px-4 py-2 bg-slate-500 text-white rounded hover:bg-slate-600">
+            Cancel
+          </button>
+        </div>
+      </Modal>
+
+      {showMenu && (
+        <div
+          className="fixed inset-0 z-0"
+          onClick={() => setShowMenu(null)}
+        />
       )}
     </>
   );

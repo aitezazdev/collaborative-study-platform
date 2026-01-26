@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchSlidesForClass, deleteSlide } from "../api/slideApi";
 import { Link } from "react-router-dom";
+import { FiFile, FiFileText, FiTrash2, FiEye } from "react-icons/fi";
 
 const Slides = ({ classId, isTeacher }) => {
     const [slides, setSlides] = useState([]);
@@ -20,9 +21,7 @@ const Slides = ({ classId, isTeacher }) => {
     }, [classId]);
 
     const handleDeleteSlide = async (slideId) => {
-        if (!window.confirm("Delete this slide?")) return;
-
-        console.log(slideId)
+        if (!window.confirm("Are you sure you want to delete this slide?")) return;
 
         const prev = slides;
         setSlides((s) => s.filter((slide) => slide._id !== slideId));
@@ -45,48 +44,72 @@ const Slides = ({ classId, isTeacher }) => {
         return "FILE";
     };
 
+    const getFileIcon = (url = "") => {
+        const type = getFileType(url);
+        if (type === "PDF") return <FiFileText size={20} />;
+        return <FiFile size={20} />;
+    };
+
     return (
-        <div className="px-8 pb-8 space-y-3">
+        <div className="space-y-3">
             {slides.length === 0 ? (
-                <p className="text-sm text-slate-500">No slides uploaded yet.</p>
+                <div className="text-center py-12 bg-white rounded-lg border border-slate-200">
+                    <FiFile className="mx-auto text-slate-300 mb-3" size={48} />
+                    <p className="text-slate-500">No slides uploaded yet.</p>
+                    {isTeacher && (
+                        <p className="text-sm text-slate-400 mt-2">
+                            Click "Upload Slide" to add course materials
+                        </p>
+                    )}
+                </div>
             ) : (
                 slides.map((slide) => (
                     <div
                         key={slide._id}
-                        className={`flex items-center justify-between gap-4 p-4 bg-white border rounded-lg shadow-sm ${deletingId === slide._id ? "opacity-50" : "hover:shadow-md"
-                            }`}
+                        className={`flex items-center justify-between gap-4 p-4 bg-white border border-slate-200 rounded-lg shadow-sm transition ${
+                            deletingId === slide._id 
+                                ? "opacity-50" 
+                                : "hover:shadow-md hover:border-slate-300"
+                        }`}
                     >
-                        <div className="flex items-center gap-4 min-w-0">
-                            <div className="w-12 h-12 rounded bg-blue-50 text-blue-600 flex items-center justify-center text-sm font-bold">
-                                {getFileType(slide.url)}
+                        <div className="flex items-center gap-4 min-w-0 flex-1">
+                            <div className="w-12 h-12 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                                {getFileIcon(slide.url)}
                             </div>
 
-                            <div className="min-w-0">
-                                <h3 className="font-medium text-slate-800 truncate">
+                            <div className="min-w-0 flex-1">
+                                <h3 className="font-medium text-slate-900 truncate">
                                     {slide.title || "Untitled Slide"}
                                 </h3>
-                                <p className="text-xs text-slate-500 truncate">
-                                    {slide.fileName}
-                                </p>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-xs text-slate-500 truncate">
+                                        {slide.fileName}
+                                    </span>
+                                    <span className="text-xs text-slate-400">•</span>
+                                    <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                                        {getFileType(slide.url)}
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 shrink-0">
                             <Link
                                 to={`/class/${classId}/slide/${slide._id}`}
-                                className="text-sm text-blue-600 hover:underline"
+                                className="flex items-center gap-2 px-3 py-2 text-sm text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition"
                             >
-                                View
+                                <FiEye size={16} />
+                                <span>View</span>
                             </Link>
-
 
                             {isTeacher && (
                                 <button
                                     onClick={() => handleDeleteSlide(slide._id)}
                                     disabled={deletingId === slide._id}
-                                    className="text-sm text-red-600 hover:underline disabled:opacity-50"
+                                    className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
                                 >
-                                    {deletingId === slide._id ? "Deleting..." : "Delete"}
+                                    <FiTrash2 size={16} />
+                                    <span>{deletingId === slide._id ? "Deleting..." : "Delete"}</span>
                                 </button>
                             )}
                         </div>
