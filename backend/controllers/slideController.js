@@ -176,7 +176,6 @@ export const uploadSlide = async (req, res) => {
   }
 };
 
-// delete slide
 export const deleteSlide = async (req, res) => {
   try {
     const userId = req.user?._id;
