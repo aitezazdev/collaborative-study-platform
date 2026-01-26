@@ -2,11 +2,50 @@ import { Class } from "../models/classModel.js";
 import { Slide } from "../models/slideModel.js";
 import cloudinary from "../config/cloudinary.js";
 import streamifier from "streamifier";
-import libre from "libreoffice-convert";
-import { promisify } from "util";
 import path from "path";
+import fs from "fs";
+import os from "os";
+import { spawn } from "child_process";
 
-const libreConvert = promisify(libre.convert);
+const convertDocxToPdf = async (buffer, originalName) => {
+  const tempDir = os.tmpdir();
+  const inputPath = path.join(tempDir, originalName);
+  const outputPath = path.join(
+    tempDir,
+    originalName.replace(/\.[^/.]+$/, ".pdf")
+  );
+
+  fs.writeFileSync(inputPath, buffer);
+
+  const isWindows = os.platform() === "win32";
+  const sofficePath = isWindows
+    ? "C:\\Program Files\\LibreOffice\\program\\soffice.exe"
+    : "soffice";
+
+  await new Promise((resolve, reject) => {
+    const proc = spawn(sofficePath, [
+      "--headless",
+      "--convert-to",
+      "pdf",
+      "--outdir",
+      tempDir,
+      inputPath,
+    ]);
+
+    proc.on("error", reject);
+    proc.on("exit", (code) => {
+      if (code !== 0) return reject(new Error("LibreOffice conversion failed"));
+      resolve();
+    });
+  });
+
+  const pdfBuffer = fs.readFileSync(outputPath);
+
+  fs.unlinkSync(inputPath);
+  fs.unlinkSync(outputPath);
+
+  return pdfBuffer;
+};
 
 export const uploadSlide = async (req, res) => {
   try {
@@ -14,54 +53,45 @@ export const uploadSlide = async (req, res) => {
     const { title } = req.body;
     const { classId } = req.params;
 
-    if (!userId) {
+    if (!userId)
       return res.status(401).json({ success: false, message: "Unauthorized" });
-    }
 
-    if (!classId) {
+    if (!classId)
       return res
         .status(400)
         .json({ success: false, message: "Class ID is required" });
-    }
 
-    if (!req.file) {
+    if (!req.file)
       return res
         .status(400)
         .json({ success: false, message: "Slide file is required" });
-    }
 
     const foundClass = await Class.findById(classId);
-
-    if (!foundClass) {
+    if (!foundClass)
       return res
         .status(404)
         .json({ success: false, message: "Class not found" });
-    }
 
-    if (foundClass.teacher.toString() !== userId.toString()) {
+    if (foundClass.teacher.toString() !== userId.toString())
       return res.status(403).json({
         success: false,
         message: "Only the class teacher can upload slides",
       });
-    }
 
     const fileExtension = req.file.originalname.split(".").pop().toLowerCase();
     const allowedExtensions = ["pdf", "ppt", "pptx", "doc", "docx"];
-
-    if (!allowedExtensions.includes(fileExtension)) {
+    if (!allowedExtensions.includes(fileExtension))
       return res.status(400).json({
         success: false,
         message: "Only PDF, PowerPoint or Word files are allowed",
       });
-    }
 
     const fileSizeInMB = req.file.size / (1024 * 1024);
-    if (fileSizeInMB > 100) {
+    if (fileSizeInMB > 100)
       return res.status(400).json({
         success: false,
         message: "File size must be less than 100MB",
       });
-    }
 
     let fileBuffer = req.file.buffer;
     let finalFileName = req.file.originalname;
@@ -69,15 +99,11 @@ export const uploadSlide = async (req, res) => {
     if (fileExtension !== "pdf") {
       try {
         console.log(`Converting ${fileExtension} to PDF...`);
-
-        const pdfBuffer = await libreConvert(fileBuffer, ".pdf", undefined);
-
-        fileBuffer = pdfBuffer;
+        fileBuffer = await convertDocxToPdf(fileBuffer, req.file.originalname);
         finalFileName = req.file.originalname.replace(
           new RegExp(`.${fileExtension}$`),
-          ".pdf",
+          ".pdf"
         );
-
         console.log("Conversion successful!");
       } catch (conversionError) {
         console.error("Conversion Error:", conversionError);
@@ -90,21 +116,20 @@ export const uploadSlide = async (req, res) => {
       }
     }
 
-    // ✅ FIXED: Use resource_type "raw" for PDFs
     const uploadFromBuffer = () =>
       new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
           {
             folder: `class_slides/${classId}`,
-            resource_type: "raw", // ✅ Changed from "image" to "raw"
+            resource_type: "raw",
             format: "pdf",
-            access_mode: "public", // ✅ Ensure public access
+            access_mode: "public",
             timeout: 120000,
           },
           (error, result) => {
             if (result) resolve(result);
             else reject(error);
-          },
+          }
         );
 
         streamifier.createReadStream(fileBuffer).pipe(stream);
@@ -150,6 +175,7 @@ export const uploadSlide = async (req, res) => {
     });
   }
 };
+
 
 // delete slide
 export const deleteSlide = async (req, res) => {
