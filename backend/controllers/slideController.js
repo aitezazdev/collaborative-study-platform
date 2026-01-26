@@ -168,6 +168,8 @@ export const deleteSlide = async (req, res) => {
         .json({ success: false, message: "Slide not found" });
     }
 
+    console.log("Slide public_id from DB:", slide.public_id);
+
     const foundClass = await Class.findById(slide.class);
     if (foundClass.teacher.toString() !== userId.toString()) {
       return res.status(403).json({
@@ -176,24 +178,45 @@ export const deleteSlide = async (req, res) => {
       });
     }
 
-    try {
-      const cloudinaryResult = await cloudinary.uploader.destroy(
-        slide.public_id,
-        { resource_type: "raw" },
-      );
-      console.log("Cloudinary deletion result:", cloudinaryResult);
-      if (
-        cloudinaryResult.result !== "ok" &&
-        cloudinaryResult.result !== "not found"
-      ) {
-        console.warn("Unexpected Cloudinary result:", cloudinaryResult);
+    if (slide.public_id) {
+      try {
+        let cloudinaryResult = await cloudinary.uploader.destroy(
+          slide.public_id,
+          { resource_type: "raw", invalidate: true }
+        );
+        
+        if (cloudinaryResult.result === "not found") {
+          const publicIdWithoutExt = slide.public_id.replace(/\.pdf$/, '');
+          console.log("Attempting delete without extension:", publicIdWithoutExt);
+          
+          cloudinaryResult = await cloudinary.uploader.destroy(
+            publicIdWithoutExt,
+            { resource_type: "raw", invalidate: true }
+          );
+          
+        }
+
+        if (cloudinaryResult.result === "not found") {
+          const publicIdWithoutExt = slide.public_id.replace(/\.pdf$/, '');
+          
+          cloudinaryResult = await cloudinary.uploader.destroy(
+            publicIdWithoutExt,
+            { resource_type: "image", invalidate: true }
+          );
+          
+        }
+
+      } catch (cloudinaryError) {
+        res.status(500).json({
+          success: false,
+          message: "Failed to delete slide from cloud storage",
+          error: cloudinaryError.message,
+        });
       }
-    } catch (cloudinaryError) {
-      console.error("Cloudinary deletion error:", cloudinaryError);
     }
 
     await Slide.findByIdAndDelete(slideId);
-
+    
     res
       .status(200)
       .json({ success: true, message: "Slide deleted successfully" });
