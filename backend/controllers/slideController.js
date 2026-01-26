@@ -12,7 +12,7 @@ const convertDocxToPdf = async (buffer, originalName) => {
   const inputPath = path.join(tempDir, originalName);
   const outputPath = path.join(
     tempDir,
-    originalName.replace(/\.[^/.]+$/, ".pdf")
+    originalName.replace(/\.[^/.]+$/, ".pdf"),
   );
 
   fs.writeFileSync(inputPath, buffer);
@@ -102,7 +102,7 @@ export const uploadSlide = async (req, res) => {
         fileBuffer = await convertDocxToPdf(fileBuffer, req.file.originalname);
         finalFileName = req.file.originalname.replace(
           new RegExp(`.${fileExtension}$`),
-          ".pdf"
+          ".pdf",
         );
         console.log("Conversion successful!");
       } catch (conversionError) {
@@ -129,7 +129,7 @@ export const uploadSlide = async (req, res) => {
           (error, result) => {
             if (result) resolve(result);
             else reject(error);
-          }
+          },
         );
 
         streamifier.createReadStream(fileBuffer).pipe(stream);
@@ -176,7 +176,6 @@ export const uploadSlide = async (req, res) => {
   }
 };
 
-
 // delete slide
 export const deleteSlide = async (req, res) => {
   try {
@@ -197,6 +196,13 @@ export const deleteSlide = async (req, res) => {
     console.log("Slide public_id from DB:", slide.public_id);
 
     const foundClass = await Class.findById(slide.class);
+    if (!foundClass) {
+      return res.status(404).json({
+        success: false,
+        message: "Class not found",
+      });
+    }
+
     if (foundClass.teacher.toString() !== userId.toString()) {
       return res.status(403).json({
         success: false,
@@ -208,32 +214,41 @@ export const deleteSlide = async (req, res) => {
       try {
         let cloudinaryResult = await cloudinary.uploader.destroy(
           slide.public_id,
-          { resource_type: "raw", invalidate: true }
+          { resource_type: "raw", invalidate: true },
         );
-        
+
         if (cloudinaryResult.result === "not found") {
-          const publicIdWithoutExt = slide.public_id.replace(/\.pdf$/, '');
-          console.log("Attempting delete without extension:", publicIdWithoutExt);
-          
+          const publicIdWithoutExt = slide.public_id.replace(
+            /\.(pdf|ppt|pptx|doc|docx)$/,
+            "",
+          );
+          console.log(
+            "Attempting delete without extension:",
+            publicIdWithoutExt,
+          );
+
           cloudinaryResult = await cloudinary.uploader.destroy(
             publicIdWithoutExt,
-            { resource_type: "raw", invalidate: true }
+            { resource_type: "raw", invalidate: true },
           );
-          
         }
 
         if (cloudinaryResult.result === "not found") {
-          const publicIdWithoutExt = slide.public_id.replace(/\.pdf$/, '');
-          
+          const publicIdWithoutExt = slide.public_id.replace(
+            /\.(pdf|ppt|pptx|doc|docx)$/,
+            "",
+          );
+
           cloudinaryResult = await cloudinary.uploader.destroy(
             publicIdWithoutExt,
-            { resource_type: "image", invalidate: true }
+            { resource_type: "image", invalidate: true },
           );
-          
         }
 
+        console.log("Cloudinary deletion result:", cloudinaryResult);
       } catch (cloudinaryError) {
-        res.status(500).json({
+        console.error("Cloudinary deletion error:", cloudinaryError);
+        return res.status(500).json({
           success: false,
           message: "Failed to delete slide from cloud storage",
           error: cloudinaryError.message,
@@ -242,13 +257,13 @@ export const deleteSlide = async (req, res) => {
     }
 
     await Slide.findByIdAndDelete(slideId);
-    
-    res
+
+    return res
       .status(200)
       .json({ success: true, message: "Slide deleted successfully" });
   } catch (error) {
     console.error("Delete Error:", error);
-    res
+    return res
       .status(500)
       .json({ success: false, message: "Server Error", error: error.message });
   }
