@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { Loader2, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2, Download, FileText, MessageSquare, X, Send } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize2, Download, MessageSquare, X, Send } from "lucide-react";
 import { fetchSlideById } from "../api/slideApi";
 
 const SlideViewer = () => {
@@ -9,7 +9,7 @@ const SlideViewer = () => {
   const [slide, setSlide] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [numPages, setNumPages] = useState(null);
-  const [scale, setScale] = useState(1.0);
+  const [scale, setScale] = useState(2.5);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [pdfDoc, setPdfDoc] = useState(null);
@@ -17,6 +17,10 @@ const SlideViewer = () => {
   const [showComments, setShowComments] = useState(false);
   const [newComment, setNewComment] = useState("");
   const [comments, setComments] = useState([]);
+  
+  const canvasRef = useRef(null);
+  const textLayerRef = useRef(null);
+  const containerRef = useRef(null);
 
   useEffect(() => {
     const loadPdfJs = async () => {
@@ -32,6 +36,12 @@ const SlideViewer = () => {
       };
       
       document.head.appendChild(script);
+      
+      // Add text layer CSS
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css';
+      document.head.appendChild(link);
     };
     
     loadPdfJs();
@@ -114,19 +124,24 @@ const SlideViewer = () => {
         setRendering(true);
         
         const page = await pdfDoc.getPage(pageNumber);
-        const canvas = document.getElementById('pdf-canvas');
+        const canvas = canvasRef.current;
+        const textLayerDiv = textLayerRef.current;
         
-        if (!canvas) {
-          console.error('Canvas element not found');
+        if (!canvas || !textLayerDiv) {
+          console.error('Canvas or text layer element not found');
           setRendering(false);
           return;
         }
         
         const context = canvas.getContext('2d');
-
         const viewport = page.getViewport({ scale });
+        
         canvas.height = viewport.height;
         canvas.width = viewport.width;
+
+        // Set text layer dimensions
+        textLayerDiv.style.width = `${viewport.width}px`;
+        textLayerDiv.style.height = `${viewport.height}px`;
 
         const renderContext = {
           canvasContext: context,
@@ -134,6 +149,20 @@ const SlideViewer = () => {
         };
 
         await page.render(renderContext).promise;
+        
+        // Render text layer for text selection
+        textLayerDiv.innerHTML = ''; // Clear previous text layer
+        
+        const textContent = await page.getTextContent();
+        
+        // Render text layer using PDF.js
+        await window.pdfjsLib.renderTextLayer({
+          textContentSource: textContent,
+          container: textLayerDiv,
+          viewport: viewport,
+          textDivs: []
+        });
+        
         setRendering(false);
       } catch (err) {
         console.error("Error rendering page:", err);
@@ -147,25 +176,31 @@ const SlideViewer = () => {
   const handlePrevPage = () => {
     if (pageNumber > 1) {
       setPageNumber(pageNumber - 1);
+      if (containerRef.current) {
+        containerRef.current.scrollTop = 0;
+      }
     }
   };
 
   const handleNextPage = () => {
     if (pageNumber < numPages) {
       setPageNumber(pageNumber + 1);
+      if (containerRef.current) {
+        containerRef.current.scrollTop = 0;
+      }
     }
   };
 
   const handleZoomIn = () => {
-    setScale(prevScale => Math.min(prevScale + 0.2, 3.0));
+    setScale(prevScale => Math.min(prevScale + 0.25, 4.0));
   };
 
   const handleZoomOut = () => {
-    setScale(prevScale => Math.max(prevScale - 0.2, 0.5));
+    setScale(prevScale => Math.max(prevScale - 0.25, 0.75));
   };
 
   const handleResetZoom = () => {
-    setScale(1.0);
+    setScale(2.5);
   };
 
   const handleFullscreen = () => {
@@ -250,11 +285,12 @@ const SlideViewer = () => {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="bg-white border-b border-slate-200 px-6 py-4">
+      {/* Header - Reduced height */}
+      <div className="bg-white border-b border-slate-200 px-6 py-3">
         <div className="flex items-center justify-between">
           <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold text-slate-900 truncate">{slide.title || 'Untitled Slide'}</h1>
-            <p className="text-sm text-slate-500 mt-1 truncate">
+            <h1 className="text-xl font-bold text-slate-900 truncate">{slide.title || 'Untitled Slide'}</h1>
+            <p className="text-xs text-slate-500 mt-0.5 truncate">
               {slide.fileName || 'slide.pdf'}
               {slide.convertedToPdf && ' (Converted to PDF)'}
             </p>
@@ -262,7 +298,7 @@ const SlideViewer = () => {
           <div className="flex items-center gap-3 ml-4">
             <button 
               onClick={() => setShowComments(!showComments)}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors relative"
+              className="flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors relative text-sm"
             >
               <MessageSquare className="w-4 h-4" />
               <span>Comments</span>
@@ -274,7 +310,7 @@ const SlideViewer = () => {
             </button>
             <button 
               onClick={handleDownload}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
             >
               <Download className="w-4 h-4" />
               <span>Download</span>
@@ -283,14 +319,17 @@ const SlideViewer = () => {
         </div>
       </div>
 
-      <div className="flex gap-6 p-6 max-w-screen-2xl mx-auto">
-        <div className={`flex-1 bg-white rounded-lg shadow-sm border border-slate-200 transition-all duration-300 ${showComments ? 'mr-0' : ''}`}>
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
+      {/* Main Content - More space for slide viewer */}
+      <div className="flex gap-4 p-4 max-w-full mx-auto h-[calc(100vh-80px)]">
+        {/* PDF Viewer - Takes full available space */}
+        <div className={`flex-1 bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col transition-all duration-300 ${showComments ? 'max-w-[calc(100%-26rem)]' : 'max-w-full'}`}>
+          {/* Toolbar - Compact */}
+          <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200 shrink-0">
             <div className="flex items-center gap-2">
               <button
                 onClick={handlePrevPage}
                 disabled={pageNumber <= 1}
-                className="p-2 rounded hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="p-1.5 rounded hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 title="Previous page"
               >
                 <ChevronLeft className="w-5 h-5" />
@@ -303,7 +342,7 @@ const SlideViewer = () => {
               <button
                 onClick={handleNextPage}
                 disabled={!numPages || pageNumber >= numPages}
-                className="p-2 rounded hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="p-1.5 rounded hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 title="Next page"
               >
                 <ChevronRight className="w-5 h-5" />
@@ -313,21 +352,21 @@ const SlideViewer = () => {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleZoomOut}
-                disabled={scale <= 0.5}
-                className="p-2 rounded hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                disabled={scale <= 0.75}
+                className="p-1.5 rounded hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 title="Zoom out"
               >
                 <ZoomOut className="w-5 h-5" />
               </button>
               
-              <span className="text-sm font-medium px-3 py-1 bg-slate-100 rounded min-w-15 text-center">
+              <span className="text-sm font-medium px-3 py-1 bg-slate-100 rounded min-w-[60px] text-center">
                 {Math.round(scale * 100)}%
               </span>
               
               <button
                 onClick={handleZoomIn}
-                disabled={scale >= 3.0}
-                className="p-2 rounded hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                disabled={scale >= 4.0}
+                className="p-1.5 rounded hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 title="Zoom in"
               >
                 <ZoomIn className="w-5 h-5" />
@@ -336,7 +375,7 @@ const SlideViewer = () => {
               <button
                 onClick={handleResetZoom}
                 className="px-3 py-1 text-sm rounded hover:bg-slate-100 transition-colors"
-                title="Reset zoom"
+                title="Reset zoom to 250%"
               >
                 Reset
               </button>
@@ -345,7 +384,7 @@ const SlideViewer = () => {
 
               <button
                 onClick={handleFullscreen}
-                className="p-2 rounded hover:bg-slate-100 transition-colors"
+                className="p-1.5 rounded hover:bg-slate-100 transition-colors"
                 title="Fullscreen"
               >
                 <Maximize2 className="w-5 h-5" />
@@ -353,33 +392,50 @@ const SlideViewer = () => {
             </div>
           </div>
 
+          {/* PDF Canvas Container - Maximum space */}
           <div 
             id="pdf-viewer-container" 
-            className="overflow-auto p-6 bg-slate-100"
-            style={{ height: 'calc(100vh - 230px)' }}
+            ref={containerRef}
+            className="flex-1 overflow-auto bg-slate-100"
           >
-            <div className="flex justify-center">
+            <div className="flex justify-center items-start min-h-full p-4">
               <div className="bg-white shadow-lg relative">
                 {rendering && (
                   <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-10">
                     <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
                   </div>
                 )}
-                <canvas id="pdf-canvas" className="max-w-full"></canvas>
+                <div style={{ position: 'relative' }}>
+                  <canvas ref={canvasRef} className="max-w-full h-auto block"></canvas>
+                  <div 
+                    ref={textLayerRef}
+                    className="textLayer"
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      right: 0,
+                      bottom: 0,
+                      overflow: 'hidden',
+                      lineHeight: 1.0,
+                      opacity: 0.2
+                    }}
+                  ></div>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
+        {/* Comments Panel - Fixed width when shown */}
         {showComments && (
           <>
             <div 
               className="fixed inset-0 bg-black/20 z-30 lg:hidden"
               onClick={() => setShowComments(false)}
             />
-            <div className="fixed lg:relative right-0 top-0 lg:top-auto w-96 bg-white rounded-lg shadow-xl lg:shadow-sm border border-slate-200 flex flex-col z-40" 
-                 style={{ height: 'calc(100vh - 180px)' }}>
-              <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+            <div className="fixed lg:relative right-0 top-0 lg:top-auto w-96 bg-white rounded-lg shadow-xl lg:shadow-sm border border-slate-200 flex flex-col z-40 h-full lg:h-auto lg:max-h-full">
+              <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between shrink-0">
                 <h3 className="font-semibold text-slate-900 flex items-center gap-2">
                   <MessageSquare className="w-5 h-5 text-blue-600" />
                   <span>Comments</span>
@@ -407,7 +463,7 @@ const SlideViewer = () => {
                     {pageComments.map((comment) => (
                       <div key={comment.id} className="bg-slate-50 rounded-lg p-3 border border-slate-200">
                         <div className="flex items-start gap-3">
-                          <div className="w-8 h-8 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold shrink-0">
                             {comment.author.charAt(0)}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -426,7 +482,7 @@ const SlideViewer = () => {
                 )}
               </div>
 
-              <div className="p-4 border-t border-slate-200 bg-slate-50">
+              <div className="p-4 border-t border-slate-200 bg-slate-50 shrink-0">
                 <div className="flex gap-2">
                   <textarea
                     placeholder="Add a comment..."
