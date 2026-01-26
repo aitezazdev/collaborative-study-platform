@@ -1,15 +1,18 @@
 import { FiUsers, FiX } from 'react-icons/fi';
+import { ClipLoader } from 'react-spinners';
 
 const StudentsSidebar = ({ isOpen, students, loading, onClose, onStudentClick }) => {
-    if (!isOpen) return null;
-
     return (
         <>
             <div
-                className="fixed inset-0 bg-black/30 z-40 transition-opacity"
+                className={`fixed inset-0 bg-black/30 z-40 transition-all duration-500 ease-out ${
+                    isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
+                }`}
                 onClick={onClose}
             />
-            <div className="fixed right-0 top-0 h-full w-96 bg-white shadow-2xl z-50 transform transition-transform">
+            <div className={`fixed right-0 top-0 h-full w-96 bg-white shadow-2xl z-50 transition-all duration-500 ease-out ${
+                isOpen ? 'translate-x-0' : 'translate-x-full'
+            }`}>
                 <div className="flex flex-col h-full">
                     <div className="flex items-center justify-between p-6 border-b border-slate-200">
                         <div className="flex items-center gap-2">
@@ -17,9 +20,11 @@ const StudentsSidebar = ({ isOpen, students, loading, onClose, onStudentClick })
                             <h3 className="text-xl font-semibold text-slate-900">
                                 Students
                             </h3>
-                            <span className="bg-blue-100 text-blue-700 text-sm px-2 py-1 rounded-full">
-                                {students.length}
-                            </span>
+                            {!loading && (
+                                <span className="bg-blue-100 text-blue-700 text-sm px-2 py-1 rounded-full">
+                                    {students.length}
+                                </span>
+                            )}
                         </div>
                         <button
                             onClick={onClose}
@@ -30,11 +35,12 @@ const StudentsSidebar = ({ isOpen, students, loading, onClose, onStudentClick })
 
                     <div className="flex-1 overflow-y-auto p-4">
                         {loading ? (
-                            <div className="flex items-center justify-center py-8">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                            <div className="flex flex-col items-center justify-center py-12">
+                                <ClipLoader color="#3B82F6" size={40} />
+                                <p className="text-slate-600 mt-4">Loading students...</p>
                             </div>
                         ) : students.length === 0 ? (
-                            <div className="text-center py-8">
+                            <div className="text-center py-12">
                                 <FiUsers className="mx-auto text-slate-300 mb-3" size={48} />
                                 <p className="text-slate-500">No students enrolled yet</p>
                             </div>
@@ -52,7 +58,7 @@ const StudentsSidebar = ({ isOpen, students, loading, onClose, onStudentClick })
                                                 className="w-10 h-10 rounded-full object-cover"
                                             />
                                         ) : (
-                                            <div className="w-10 h-10 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
+                                            <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold">
                                                 {student.name?.charAt(0).toUpperCase()}
                                             </div>
                                         )}

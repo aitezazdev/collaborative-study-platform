@@ -1,4 +1,4 @@
-import { FiChevronLeft, FiBookOpen, FiUser, FiUsers, FiCopy, FiUpload } from 'react-icons/fi';
+import { FiChevronLeft, FiUser, FiUsers, FiCopy, FiUpload } from 'react-icons/fi';
 
 const ClassHeader = ({ cls, isTeacher, students, onBack, onCopyJoinCode, onToggleStudents, onUploadSlide }) => {
     return (
@@ -14,7 +14,6 @@ const ClassHeader = ({ cls, isTeacher, students, onBack, onCopyJoinCode, onToggl
                 <div className="flex items-start justify-between">
                     <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                            <FiBookOpen className="text-blue-600" size={32} />
                             <h1 className="text-3xl font-bold text-slate-900">
                                 {cls.title}
                             </h1>

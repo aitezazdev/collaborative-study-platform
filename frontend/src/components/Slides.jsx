@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { fetchSlidesForClass, deleteSlide } from "../api/slideApi";
 import { Link } from "react-router-dom";
 import { FiFile, FiFileText, FiTrash2, FiEye } from "react-icons/fi";
+import { ClipLoader } from "react-spinners";
 import ConfirmationModal from "../components/ui/ConfirmationModal";
 
 const Slides = ({ classId, isTeacher }) => {
@@ -9,13 +10,17 @@ const Slides = ({ classId, isTeacher }) => {
   const [deletingId, setDeletingId] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedSlide, setSelectedSlide] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const fetchSlides = async () => {
     try {
+      setLoading(true);
       const data = await fetchSlidesForClass(classId);
-      setSlides(data.slides);
+      setSlides(data.slides || []);
     } catch (error) {
       console.error("Error fetching slides:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -57,6 +62,17 @@ const Slides = ({ classId, isTeacher }) => {
     if (type === "PDF") return <FiFileText size={20} />;
     return <FiFile size={20} />;
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12 bg-white rounded-lg border border-slate-200">
+        <div className="flex flex-col items-center gap-4">
+          <ClipLoader color="#3B82F6" size={40} />
+          <p className="text-slate-600">Loading slides...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

@@ -4,6 +4,7 @@ import { useOutletContext } from "react-router-dom";
 import { toast } from "react-toastify";
 import { fetchUserClasses, deleteClass, updateClass } from "../api/classApi";
 import { FiBook } from "react-icons/fi";
+import { ClipLoader } from "react-spinners";
 import ClassSection from "../components/home/ClassSection";
 import EditClassModal from "../components/home/EditClassModal";
 import DeleteClassModal from "../components/home/DeleteClassModal";
@@ -16,6 +17,7 @@ const HomePage = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedClass, setSelectedClass] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [fetchingClasses, setFetchingClasses] = useState(true);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -28,10 +30,14 @@ const HomePage = () => {
 
   const getUserClasses = async () => {
     try {
+      setFetchingClasses(true);
       const data = await fetchUserClasses();
       setClasses(data.data || []);
     } catch (error) {
       console.error("Error fetching classes:", error);
+      toast.error("Failed to fetch classes");
+    } finally {
+      setFetchingClasses(false);
     }
   };
 
@@ -113,6 +119,17 @@ const HomePage = () => {
       if (isTeacher) teacherClasses.push(cls);
       else if (isStudent) studentClasses.push(cls);
     });
+  }
+
+  if (fetchingClasses) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <ClipLoader color="#3B82F6" size={50} />
+          <p className="text-gray-600">Loading classes...</p>
+        </div>
+      </div>
+    );
   }
 
   return (

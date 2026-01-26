@@ -4,6 +4,7 @@ import { useSelector } from "react-redux";
 import { fetchUserClasses, fetchClassStudents } from "../api/classApi";
 import { uploadSlide } from "../api/slideApi";
 import { toast } from "react-toastify";
+import { ClipLoader } from "react-spinners";
 import Slides from "../components/Slides";
 import ClassHeader from "../components/class/ClassHeader";
 import StudentsSidebar from "../components/class/StudentsSidebar";
@@ -24,6 +25,7 @@ const ClassPage = () => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [loadingStudents, setLoadingStudents] = useState(false);
+    const [loadingClass, setLoadingClass] = useState(true);
 
     const reduxUser = useSelector((state) => state.auth.user);
     const localUser = JSON.parse(localStorage.getItem("user"));
@@ -33,9 +35,21 @@ const ClassPage = () => {
 
     useEffect(() => {
         const loadClass = async () => {
-            const res = await fetchUserClasses();
-            const found = res.data.find((c) => c._id === classId);
-            setCls(found);
+            try {
+                setLoadingClass(true);
+                const res = await fetchUserClasses();
+                const found = res.data.find((c) => c._id === classId);
+                if (found) {
+                    setCls(found);
+                } else {
+                    toast.error("Class not found");
+                }
+            } catch (error) {
+                console.error("Error loading class:", error);
+                toast.error("Failed to load class");
+            } finally {
+                setLoadingClass(false);
+            }
         };
         loadClass();
     }, [classId]);
@@ -67,7 +81,10 @@ const ClassPage = () => {
     };
 
     const handleUploadSlide = async () => {
-        if (!selectedFile) return;
+        if (!selectedFile) {
+            toast.error("Please select a file");
+            return;
+        }
 
         const formData = new FormData();
         formData.append("slide", selectedFile);
@@ -98,12 +115,22 @@ const ClassPage = () => {
         toast.success("Join code copied!");
     };
 
+    if (loadingClass) {
+        return (
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <ClipLoader color="#3B82F6" size={50} />
+                    <p className="text-slate-600">Loading class...</p>
+                </div>
+            </div>
+        );
+    }
+
     if (!cls) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-slate-500">Loading class...</p>
+                    <p className="text-slate-600 text-lg">Class not found</p>
                 </div>
             </div>
         );
