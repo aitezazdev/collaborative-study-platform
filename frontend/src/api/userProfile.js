@@ -11,7 +11,7 @@ export const fetchUserProfile = async () => {
 
 export const updateUserProfile = async (data) => {
   try {
-    const response = await instance.post("/user/update", data);
+    const response = await instance.put("/user/update", data);
     return response.data;
   } catch (error) {
     return { error: error.response?.data?.message || error.message };

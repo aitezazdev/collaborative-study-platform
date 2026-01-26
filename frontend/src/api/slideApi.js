@@ -2,14 +2,13 @@ import instance from "./axios";
 
 export const uploadSlide = async (classId, formData) => {
   try {
-    const response = await instance.post(`/slide/upload/${classId}`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    const response = await instance.post(`/slide/upload/${classId}`, formData);
     return response.data;
   } catch (error) {
-    console.log(error);
+    if (error.response && error.response.data) {
+      return error.response.data;
+    }
+    return { success: false, message: "Server error" };
   }
 };
 
@@ -18,7 +17,10 @@ export const fetchSlidesForClass = async (classId) => {
     const response = await instance.get(`/slide/allSlides/${classId}`);
     return response.data;
   } catch (error) {
-    console.log(error);
+    if (error.response && error.response.data) {
+      return error.response.data;
+    }
+    return { success: false, message: "Server error" };
   }
 };
 
@@ -28,7 +30,10 @@ export const deleteSlide = async (slideId) => {
     console.log(response);
     return response.data;
   } catch (error) {
-    console.log(error);
+    if (error.response && error.response.data) {
+      return error.response.data;
+    }
+    return { success: false, message: "Server error" };
   }
 };
 
@@ -37,6 +42,9 @@ export const fetchSlideById = async (slideId) => {
     const response = await instance.get(`/slide/fetchSlideById/${slideId}`);
     return response.data;
   } catch (error) {
-    console.log(error);
+    if (error.response && error.response.data) {
+      return error.response.data;
+    }
+    return { success: false, message: "Server error" };
   }
 };

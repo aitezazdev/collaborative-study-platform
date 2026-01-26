@@ -183,7 +183,9 @@ export const fetchClassStudents = async (req, res) => {
     );
 
     if (!foundClass) {
-      return res.status(404).json({ success: false, message: "Class not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Class not found" });
     }
 
     res.json({
@@ -194,4 +196,48 @@ export const fetchClassStudents = async (req, res) => {
   } catch (error) {
     res.status(500).json({ success: false, message: "Server Error" });
   }
-}
+};
+
+// update class
+export const updateClass = async (req, res) => {
+  try {
+    const classId = req.params.id;
+    const { title, description } = req.body;
+
+    if (!req.user?._id) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const foundClass = await Class.findById(classId);
+
+    if (!foundClass) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Class not found" });
+    }
+
+    if (foundClass.teacher.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Only the teacher can update the class",
+      });
+    }
+
+    if (title) foundClass.title = title;
+    if (description) foundClass.description = description;
+
+    await foundClass.save();
+
+    const populatedClass = await Class.findById(foundClass._id)
+      .populate("teacher", "name email avatar")
+      .populate("students", "name email avatar");
+
+    res.json({
+      success: true,
+      message: "Class updated successfully",
+      class: populatedClass,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};

@@ -5,7 +5,10 @@ export const createClass = async (data) => {
     const response = await instance.post("/class/create", data);
     return response.data;
   } catch (error) {
-    console.log(error);
+    if (error.response && error.response.data) {
+      return error.response.data;
+    }
+    return { success: false, message: "Server error" };
   }
 };
 
@@ -26,6 +29,9 @@ export const fetchUserClasses = async () => {
     const response = await instance.get("/class/my-classes");
     return response.data;
   } catch (error) {
-    console.log(error);
+    if (error.response && error.response.data) {
+      return error.response.data;
+    }
+    return { success: false, message: "Server error" };
   }
 };
