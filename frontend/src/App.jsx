@@ -9,9 +9,9 @@ import AppLayout from "./layouts/AppLayout";
 import SlideViewer from "./components/SlideViewer";
 
 function App() {
-  const token =
-    useSelector((state) => state.auth.token) ||
-    localStorage.getItem("token");
+  const reduxToken = useSelector((state) => state.auth.token);
+  const localToken = localStorage.getItem("token");
+  const token = reduxToken || localToken;
 
   return (
     <>
@@ -20,29 +20,26 @@ function App() {
       <Routes>
         <Route
           path="/login"
-          element={!token ? <Login /> : <Navigate to="/" />}
+          element={!token ? <Login /> : <Navigate to="/" replace />}
         />
         <Route
           path="/register"
-          element={!token ? <Register /> : <Navigate to="/" />}
+          element={!token ? <Register /> : <Navigate to="/" replace />}
         />
 
-        {token && (
-          <Route element={<AppLayout />}>
-            <Route path="/" element={<HomePage />} />
-            <Route
-              path="/class/:classId/:classSlug"
-              element={<ClassPage />}
-            />
-            <Route
-              path="/class/:classId/slide/:slideId"
-              element={<SlideViewer />}
-            />
+        <Route element={token ? <AppLayout /> : <Navigate to="/login" replace />}>
+          <Route path="/" element={<HomePage />} />
+          <Route
+            path="/class/:classId/:classSlug"
+            element={<ClassPage />}
+          />
+          <Route
+            path="/class/:classId/slide/:slideId"
+            element={<SlideViewer />}
+          />
+        </Route>
 
-          </Route>
-        )}
-
-        <Route path="*" element={<Navigate to="/login" />} />
+        <Route path="*" element={<Navigate to={token ? "/" : "/login"} replace />} />
       </Routes>
     </>
   );

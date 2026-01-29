@@ -1,9 +1,12 @@
 import React, { useState } from "react";
 import Modal from "react-modal";
 import { toast } from "react-toastify";
+import { useDispatch } from "react-redux";
+import { setUser as setReduxUser } from "../../redux/slices/authSlice";
 import { updateUserProfile } from "../../api/userProfile";
 
-const EditProfileModal = ({ handle, user, setUser }) => {
+const EditProfileModal = ({ handle, user, onUserUpdate }) => {
+  const dispatch = useDispatch();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: user.name || "",
@@ -37,15 +40,26 @@ const EditProfileModal = ({ handle, user, setUser }) => {
       data.append("name", formData.name);
       data.append("email", formData.email);
       data.append("bio", formData.bio);
-      if (formData.avatar) data.append("avatar", formData.avatar);
+      if (formData.avatar) {
+        data.append("avatar", formData.avatar);
+        console.log("📎 Avatar file attached:", formData.avatar.name);
+      }
+      
+      console.log("📤 Sending profile update...");
       const res = await updateUserProfile(data);
-      if (res.success) {
+      console.log("✅ Profile update response:", res);
+      
+      if (res.success && res.data) {
+        if (onUserUpdate) {
+          onUserUpdate(res.data);
+        }
+        
+        const token = localStorage.getItem("token");
+        dispatch(setReduxUser({ user: res.data, token }));
         toast.success("Profile updated successfully");
-        setUser(res.data);
-        localStorage.setItem("user", JSON.stringify(res.data));
         handle();
       } else {
-        toast.error(res.error || "Failed to update profile");
+        toast.error(res.message || "Failed to update profile");
       }
     } catch (err) {
       toast.error(err.message || "Something went wrong");
@@ -145,7 +159,8 @@ const EditProfileModal = ({ handle, user, setUser }) => {
           </button>
           <button
             onClick={handle}
-            className="px-4 py-2.5 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 transition-all">
+            disabled={loading}
+            className="px-4 py-2.5 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
             Cancel
           </button>
         </div>

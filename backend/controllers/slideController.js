@@ -1,5 +1,6 @@
 import { Class } from "../models/classModel.js";
 import { Slide } from "../models/slideModel.js";
+import { User } from "../models/user.js"; 
 import cloudinary from "../config/cloudinary.js";
 import streamifier from "streamifier";
 import path from "path";
@@ -49,12 +50,21 @@ const convertDocxToPdf = async (buffer, originalName) => {
 
 export const uploadSlide = async (req, res) => {
   try {
-    const userId = req.user?._id;
+    const firebaseUid = req.user?.uid;
     const { title } = req.body;
     const { classId } = req.params;
 
-    if (!userId)
+    if (!firebaseUid)
       return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    const user = await User.findOne({ firebaseUid });
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found in database" 
+      });
+    }
+    const userId = user._id;
 
     if (!classId)
       return res
@@ -66,17 +76,31 @@ export const uploadSlide = async (req, res) => {
         .status(400)
         .json({ success: false, message: "Slide file is required" });
 
-    const foundClass = await Class.findById(classId);
+    const foundClass = await Class.findById(classId).populate('teacher');
     if (!foundClass)
       return res
         .status(404)
         .json({ success: false, message: "Class not found" });
 
-    if (foundClass.teacher.toString() !== userId.toString())
+    const teacherUid = foundClass.teacher?.Uid || foundClass.teacher?.uid || foundClass.teacher?.firebaseUid;
+    const teacherId = foundClass.teacher?._id?.toString();
+    
+    console.log('Authorization Check:', {
+      firebaseUid,
+      userId: userId?.toString(),
+      teacherUid,
+      teacherId,
+      teacherObject: foundClass.teacher
+    });
+
+    const isAuthorized = teacherUid === firebaseUid || teacherId === userId?.toString();
+    
+    if (!isAuthorized) {
       return res.status(403).json({
         success: false,
         message: "Only the class teacher can upload slides",
       });
+    }
 
     const fileExtension = req.file.originalname.split(".").pop().toLowerCase();
     const allowedExtensions = ["pdf", "ppt", "pptx", "doc", "docx"];
@@ -146,7 +170,7 @@ export const uploadSlide = async (req, res) => {
       fileType: fileExtension,
       convertedToPdf: fileExtension !== "pdf",
       class: classId,
-      uploadedBy: userId,
+      uploadedBy: userId, 
     });
 
     res.status(201).json({
@@ -178,12 +202,21 @@ export const uploadSlide = async (req, res) => {
 
 export const deleteSlide = async (req, res) => {
   try {
-    const userId = req.user?._id;
+    const firebaseUid = req.user?.uid;
     const { slideId } = req.params;
 
-    if (!userId) {
+    if (!firebaseUid) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
+
+    const user = await User.findOne({ firebaseUid });
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found in database" 
+      });
+    }
+    const userId = user._id;
 
     const slide = await Slide.findById(slideId);
     if (!slide) {
@@ -192,14 +225,27 @@ export const deleteSlide = async (req, res) => {
         .json({ success: false, message: "Slide not found" });
     }
 
-    const foundClass = await Class.findById(slide.class);
+    const foundClass = await Class.findById(slide.class).populate('teacher');
     if (!foundClass) {
       return res
         .status(404)
         .json({ success: false, message: "Class not found" });
     }
 
-    if (foundClass.teacher.toString() !== userId.toString()) {
+    const teacherUid = foundClass.teacher?.Uid || foundClass.teacher?.uid || foundClass.teacher?.firebaseUid;
+    const teacherId = foundClass.teacher?._id?.toString();
+    
+    console.log('Delete Authorization Check:', {
+      firebaseUid,
+      userId: userId?.toString(),
+      teacherUid,
+      teacherId,
+      teacherObject: foundClass.teacher
+    });
+
+    const isAuthorized = teacherUid === firebaseUid || teacherId === userId;
+    
+    if (!isAuthorized) {
       return res.status(403).json({
         success: false,
         message: "Only the class teacher can delete slides",
@@ -300,10 +346,10 @@ export const deleteSlide = async (req, res) => {
 // fetch slides for a class
 export const fetchSlidesForClass = async (req, res) => {
   try {
-    const userId = req.user?._id;
+    const firebaseUid = req.user?.uid;
     const { classId } = req.params;
 
-    if (!userId) {
+    if (!firebaseUid) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 

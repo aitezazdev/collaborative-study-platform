@@ -32,7 +32,7 @@ const ClassPage = () => {
     const localUser = JSON.parse(localStorage.getItem("user"));
     const user = reduxUser || localUser;
 
-    const currentUserId = user?._id || user?.id;
+    const currentUserId = user?.Uid || user?._id;
 
     useEffect(() => {
         const loadClass = async () => {
@@ -58,7 +58,11 @@ const ClassPage = () => {
     useEffect(() => {
         if (!cls || !user) return;
 
-        const teacherId = cls.teacher?._id || cls.teacher?.id;
+        const teacherId = cls.teacher?.Uid || cls.teacher?._id;
+        console.log(teacherId);
+        console.log(currentUserId);
+        
+        
         const teacherStatus = teacherId === currentUserId;
         setIsTeacher(teacherStatus);
 

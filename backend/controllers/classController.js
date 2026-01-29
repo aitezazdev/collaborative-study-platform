@@ -1,20 +1,27 @@
 import { Class } from "../models/classModel.js";
+import { User } from "../models/user.js";
 import crypto from "crypto";
 import { Slide } from "../models/slideModel.js";
 
-// create class
 export const createClass = async (req, res) => {
   try {
     const { title, description } = req.body;
+    const { uid } = req.user;
 
-    if (!req.user?._id) {
-      return res.status(401).json({ message: "Unauthorized" });
+    const user = await User.findOne({ firebaseUid: uid });
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
     }
 
     if (!title) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Title is required" });
+      return res.status(400).json({
+        success: false,
+        message: "Title is required",
+      });
     }
 
     let joinCode = crypto.randomBytes(4).toString("hex");
@@ -26,7 +33,7 @@ export const createClass = async (req, res) => {
     const newClass = await Class.create({
       title,
       description: description || "",
-      teacher: req.user._id,
+      teacher: user._id,
       joinCode,
     });
 
@@ -41,40 +48,58 @@ export const createClass = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Server Error" });
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
   }
 };
 
-// join class
 export const joinClass = async (req, res) => {
   try {
     const { joinCode } = req.body;
+    const { uid } = req.user;
 
-    if (!req.user?._id) {
-      return res.status(401).json({ message: "Unauthorized" });
+    const user = await User.findOne({ firebaseUid: uid });
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
     }
 
     if (!joinCode) {
-      return res.status(400).json({ message: "Join code is required" });
+      return res.status(400).json({
+        success: false,
+        message: "Join code is required",
+      });
     }
 
     const foundClass = await Class.findOne({ joinCode });
 
     if (!foundClass) {
-      return res.status(404).json({ message: "Class not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Class not found",
+      });
     }
 
-    if (foundClass.teacher.toString() === req.user._id.toString()) {
-      return res.status(400).json({ message: "Teacher already in class" });
+    if (foundClass.teacher.toString() === user._id.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: "Teacher cannot join their own class",
+      });
     }
 
-    if (foundClass.students.includes(req.user._id)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Already joined" });
+    if (foundClass.students.includes(user._id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Already joined",
+      });
     }
 
-    foundClass.students.push(req.user._id);
+    foundClass.students.push(user._id);
     await foundClass.save();
 
     const populatedClass = await Class.findById(foundClass._id)
@@ -87,50 +112,71 @@ export const joinClass = async (req, res) => {
       class: populatedClass,
     });
   } catch (error) {
-    res.status(500).json({ message: "Server Error" });
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
   }
 };
 
-//fetch user classes
 export const fetchUserClasses = async (req, res) => {
-  const userId = req.user?._id;
   try {
-    if (!userId) {
-      return res.status(401).json({ message: "Unauthorized" });
+    const { uid } = req.user;
+
+    const user = await User.findOne({ firebaseUid: uid });
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
     }
+
     const classes = await Class.find({
-      $or: [{ teacher: userId }, { students: userId }],
+      $or: [{ teacher: user._id }, { students: user._id }],
     })
       .populate("teacher", "name email avatar")
       .populate("students", "name email avatar");
+
     return res.status(200).json({
       success: true,
       message: "Classes fetched successfully",
       data: classes,
     });
   } catch (error) {
-    res.status(500).json({ message: "Server Error" });
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
   }
 };
 
-// delete class
 export const deleteClass = async (req, res) => {
   try {
     const classId = req.params.id;
+    const { uid } = req.user;
 
-    if (!req.user?._id) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
+    const user = await User.findOne({ firebaseUid: uid });
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
     }
 
     const foundClass = await Class.findById(classId);
 
     if (!foundClass) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Class not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Class not found",
+      });
     }
 
-    if (foundClass.teacher.toString() !== req.user._id.toString()) {
+    if (foundClass.teacher.toString() !== user._id.toString()) {
       return res.status(403).json({
         success: false,
         message: "Only the teacher can delete the class",
@@ -155,7 +201,6 @@ export const deleteClass = async (req, res) => {
     }
 
     await Slide.deleteMany({ class: classId });
-
     await Class.findByIdAndDelete(classId);
 
     res.json({
@@ -164,17 +209,25 @@ export const deleteClass = async (req, res) => {
     });
   } catch (error) {
     console.error("Delete Class Error:", error);
-    res.status(500).json({ success: false, message: "Server Error" });
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
   }
 };
 
-// fetch all class students
 export const fetchClassStudents = async (req, res) => {
   try {
     const classId = req.params.id;
+    const { uid } = req.user;
 
-    if (!req.user?._id) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
+    const user = await User.findOne({ firebaseUid: uid });
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
     }
 
     const foundClass = await Class.findById(classId).populate(
@@ -183,9 +236,10 @@ export const fetchClassStudents = async (req, res) => {
     );
 
     if (!foundClass) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Class not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Class not found",
+      });
     }
 
     res.json({
@@ -194,29 +248,39 @@ export const fetchClassStudents = async (req, res) => {
       students: foundClass.students,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Server Error" });
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
   }
 };
 
-// update class
 export const updateClass = async (req, res) => {
   try {
     const classId = req.params.id;
     const { title, description } = req.body;
+    const { uid } = req.user;
 
-    if (!req.user?._id) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
+    const user = await User.findOne({ firebaseUid: uid });
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
     }
 
     const foundClass = await Class.findById(classId);
 
     if (!foundClass) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Class not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Class not found",
+      });
     }
 
-    if (foundClass.teacher.toString() !== req.user._id.toString()) {
+    if (foundClass.teacher.toString() !== user._id.toString()) {
       return res.status(403).json({
         success: false,
         message: "Only the teacher can update the class",
@@ -238,6 +302,10 @@ export const updateClass = async (req, res) => {
       class: populatedClass,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Server Error" });
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
   }
 };
