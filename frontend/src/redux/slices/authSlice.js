@@ -5,6 +5,7 @@ import {
   signInWithPopup,
   signOut,
   updateProfile,
+  onAuthStateChanged,
 } from "firebase/auth";
 import { auth, googleProvider } from "../../firebase";
 import { login } from "../../api/authApi";
@@ -21,6 +22,45 @@ const initialState = {
   token: localStorage.getItem("token") || null,
   loading: false,
   error: null,
+  authInitialized: false,
+};
+
+let authUnsubscribe = null;
+
+export const initializeAuthListener = () => (dispatch) => {
+  if (authUnsubscribe) {
+    authUnsubscribe();
+  }
+
+  authUnsubscribe = onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      try {
+        const token = await user.getIdToken(true);
+        const userData = {
+          uid: user.uid,
+          email: user.email,
+          name: user.displayName || user.email.split("@")[0],
+          photoURL: user.photoURL,
+        };
+        
+        dispatch(setUser({ user: userData, token }));
+        dispatch(setAuthInitialized(true));
+      } catch (error) {
+        console.error("Error getting token:", error);
+        dispatch(setAuthInitialized(true));
+      }
+    } else {
+      dispatch(logout());
+      dispatch(setAuthInitialized(true));
+    }
+  });
+
+  return () => {
+    if (authUnsubscribe) {
+      authUnsubscribe();
+      authUnsubscribe = null;
+    }
+  };
 };
 
 export const loginUser = createAsyncThunk(
@@ -52,7 +92,6 @@ export const loginUser = createAsyncThunk(
         console.error("Backend call failed:", backendError);
       }
 
-      // Fallback if backend didn't return user data
       if (!userData) {
         userData = {
           uid: userCredential.user.uid,
@@ -257,6 +296,9 @@ const authSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
+    setAuthInitialized: (state, action) => {
+      state.authInitialized = action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -325,5 +367,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout, setUser, clearError } = authSlice.actions;
+export const { logout, setUser, clearError, setAuthInitialized } = authSlice.actions;
 export default authSlice.reducer;

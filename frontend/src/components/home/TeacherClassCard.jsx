@@ -5,8 +5,6 @@ import { FiCopy, FiMoreVertical, FiUsers } from "react-icons/fi";
 const TeacherClassCard = ({ cls, showMenu, setShowMenu, onEdit, onDelete }) => {
   const navigate = useNavigate();
 
-  const slugify = (text) => text.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-
   const copyCode = (code) => {
     navigator.clipboard.writeText(code);
     toast.success("Join code copied!");
@@ -22,7 +20,7 @@ const TeacherClassCard = ({ cls, showMenu, setShowMenu, onEdit, onDelete }) => {
     <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-4">
         <div
-          onClick={() => navigate(`/class/${cls._id}/${slugify(cls.title)}`)}
+          onClick={() => navigate(`/class/${cls.slug}`)}
           className="flex-1 cursor-pointer">
           <h3 className="text-lg font-semibold text-gray-900 mb-1 hover:text-blue-600 transition-colors">
             {cls.title}
@@ -87,7 +85,7 @@ const TeacherClassCard = ({ cls, showMenu, setShowMenu, onEdit, onDelete }) => {
           <span className="text-sm">{getStudentText(cls.students?.length || 0)}</span>
         </div>
         <button
-          onClick={() => navigate(`/class/${cls._id}/${slugify(cls.title)}`)}
+          onClick={() => navigate(`/class/${cls.slug}`)}
           className="text-sm font-medium text-blue-600 hover:text-blue-700">
           View Class →
         </button>

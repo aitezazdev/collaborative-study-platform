@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { fetchUserClasses, fetchClassStudents } from "../api/classApi";
+import { fetchClassBySlug, fetchClassStudents } from "../api/classApi";
 import { uploadSlide } from "../api/slideApi";
 import { toast } from "react-toastify";
 import { ClipLoader } from "react-spinners";
@@ -12,7 +12,7 @@ import UploadSlideModal from "../components/class/UploadSlideModal";
 import StudentDetailsModal from "../components/class/StudentDetailsModal";
 
 const ClassPage = () => {
-    const { classId } = useParams();
+    const { slug } = useParams();
 
     const [cls, setCls] = useState(null);
     const [students, setStudents] = useState([]);
@@ -29,19 +29,30 @@ const ClassPage = () => {
     const [slidesRefreshTrigger, setSlidesRefreshTrigger] = useState(0);
 
     const reduxUser = useSelector((state) => state.auth.user);
-    const localUser = JSON.parse(localStorage.getItem("user"));
+    const localUser = (() => {
+        try {
+            const userStr = localStorage.getItem("user");
+            if (!userStr || userStr === "undefined" || userStr === "null") {
+                return null;
+            }
+            return JSON.parse(userStr);
+        } catch (error) {
+            console.error("Error parsing user from localStorage:", error);
+            return null;
+        }
+    })();
     const user = reduxUser || localUser;
 
-    const currentUserId = user?.Uid || user?._id;
+    const currentUserId = user?.uid || user?._id;
 
     useEffect(() => {
         const loadClass = async () => {
             try {
                 setLoadingClass(true);
-                const res = await fetchUserClasses();
-                const found = res.data.find((c) => c._id === classId);
-                if (found) {
-                    setCls(found);
+                const res = await fetchClassBySlug(slug);
+                if (res.success && res.class) {
+                    setCls(res.class);
+                    setIsTeacher(res.isTeacher);
                 } else {
                     toast.error("Class not found");
                 }
@@ -53,28 +64,18 @@ const ClassPage = () => {
             }
         };
         loadClass();
-    }, [classId]);
+    }, [slug]);
 
     useEffect(() => {
-        if (!cls || !user) return;
-
-        const teacherId = cls.teacher?.Uid || cls.teacher?._id;
-        console.log(teacherId);
-        console.log(currentUserId);
-        
-        
-        const teacherStatus = teacherId === currentUserId;
-        setIsTeacher(teacherStatus);
-
-        if (teacherStatus) {
+        if (isTeacher && slug) {
             loadStudents();
         }
-    }, [cls, currentUserId]);
+    }, [isTeacher, slug]);
 
     const loadStudents = async () => {
         try {
             setLoadingStudents(true);
-            const res = await fetchClassStudents(classId);
+            const res = await fetchClassStudents(slug);
             if (res.success) {
                 setStudents(res.students || []);
             }
@@ -97,7 +98,7 @@ const ClassPage = () => {
 
         try {
             setUploading(true);
-            const response = await uploadSlide(classId, formData);
+            const response = await uploadSlide(cls._id, formData);
             if (response.success) {
                 toast.success("Slide uploaded successfully");
                 setShowUploadModal(false);
@@ -171,7 +172,7 @@ const ClassPage = () => {
                 </div>
 
                 <Slides 
-                    classId={classId} 
+                    classId={cls._id} 
                     isTeacher={isTeacher}
                     refreshTrigger={slidesRefreshTrigger}
                 />

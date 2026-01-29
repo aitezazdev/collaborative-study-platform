@@ -3,8 +3,6 @@ import { useNavigate } from "react-router-dom";
 const StudentClassCard = ({ cls }) => {
   const navigate = useNavigate();
 
-  const slugify = (text) => text.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-
   const getStudentText = (count) => {
     if (count === 0) return "No students";
     if (count === 1) return "1 student";
@@ -13,7 +11,7 @@ const StudentClassCard = ({ cls }) => {
 
   return (
     <div
-      onClick={() => navigate(`/class/${cls._id}/${slugify(cls.title)}`)}
+      onClick={() => navigate(`/class/${cls.slug}`)}
       className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
       <div className="mb-4">
         <h3 className="text-lg font-semibold text-gray-900 mb-1 hover:text-blue-600 transition-colors">

@@ -1,17 +1,22 @@
 import axios from "axios";
-
+import { auth } from "../firebase";
 const instance = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
 });
 
 instance.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("token");
-    
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    } else {
-      console.log(" [AXIOS REQUEST] No token found in localStorage");
+  async (config) => {
+    try {
+      const user = auth.currentUser;
+      
+      if (user) {
+        const token = await user.getIdToken(true);
+        config.headers.Authorization = `Bearer ${token}`;
+      } else {
+        console.log("[AXIOS REQUEST] No authenticated user");
+      }
+    } catch (error) {
+      console.error("[AXIOS REQUEST] Error getting token:", error);
     }
     
     if (config.data instanceof FormData) {
@@ -19,6 +24,7 @@ instance.interceptors.request.use(
     } else {
       config.headers['Content-Type'] = 'application/json';
     }
+    
     return config;
   },
   (error) => {
@@ -28,11 +34,24 @@ instance.interceptors.request.use(
 
 instance.interceptors.response.use(
   (response) => response,
-  (error) => {
-    console.error("Axios interceptor error:", error.response?.status);
+  async (error) => {
+    const originalRequest = error.config;
     
-    if (error.response?.status === 401) {
-      console.log("Token might be invalid or expired");
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      try {
+        const user = auth.currentUser;
+        if (user) {
+          const newToken = await user.getIdToken(true);
+          
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          return instance(originalRequest);
+        }
+      } catch (refreshError) {
+        console.error("Token refresh failed:", refreshError);
+        return Promise.reject(refreshError);
+      }
     }
     
     return Promise.reject(error);

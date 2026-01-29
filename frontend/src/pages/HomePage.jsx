@@ -26,17 +26,17 @@ const HomePage = () => {
   const { refreshTrigger } = useOutletContext();
   const reduxUser = useSelector((state) => state.auth.user);
   const localUser = (() => {
-  try {
-    const userStr = localStorage.getItem("user");
-    if (!userStr || userStr === "undefined" || userStr === "null") {
+    try {
+      const userStr = localStorage.getItem("user");
+      if (!userStr || userStr === "undefined" || userStr === "null") {
+        return null;
+      }
+      return JSON.parse(userStr);
+    } catch (error) {
+      console.error("Error parsing user from localStorage:", error);
       return null;
     }
-    return JSON.parse(userStr);
-  } catch (error) {
-    console.error("Error parsing user from localStorage:", error);
-    return null;
-  }
-})();
+  })();
   const user = reduxUser || localUser;
 
   const getUserClasses = async () => {
@@ -72,9 +72,14 @@ const HomePage = () => {
   };
 
   const handleUpdateClass = async () => {
+    if (!selectedClass?.slug) {
+      toast.error("Class slug is missing");
+      return;
+    }
+
     try {
       setLoading(true);
-      const res = await updateClass(selectedClass._id, formData);
+      const res = await updateClass(selectedClass.slug, formData);
       if (res.success) {
         toast.success("Class updated successfully");
         getUserClasses();
@@ -90,9 +95,14 @@ const HomePage = () => {
   };
 
   const handleDeleteClass = async () => {
+    if (!selectedClass?.slug) {
+      toast.error("Class slug is missing");
+      return;
+    }
+
     try {
       setLoading(true);
-      const res = await deleteClass(selectedClass._id);
+      const res = await deleteClass(selectedClass.slug);
       if (res.success) {
         toast.success("Class deleted successfully");
         getUserClasses();

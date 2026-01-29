@@ -36,9 +36,9 @@ export const fetchUserClasses = async () => {
   }
 };
 
-export const deleteClass = async (classId) => {
+export const deleteClass = async (slug) => {
   try {
-    const response = await instance.delete(`/class/delete/${classId}`);
+    const response = await instance.delete(`/class/${slug}`);
     return response.data;
   } catch (error) {
     if (error.response && error.response.data) {
@@ -48,9 +48,9 @@ export const deleteClass = async (classId) => {
   }
 };
 
-export const fetchClassStudents = async (classId) => {
+export const fetchClassStudents = async (slug) => {
   try {
-    const response = await instance.get(`/class/all-students/${classId}`);
+    const response = await instance.get(`/class/${slug}/students`);
     return response.data;
   } catch (error) {
     if (error.response && error.response.data) {
@@ -60,9 +60,33 @@ export const fetchClassStudents = async (classId) => {
   }
 };
 
-export const updateClass = async (classId, data) => {
+export const updateClass = async (slug, data) => {
   try {
-    const response = await instance.put(`/class/update/${classId}`, data);
+    const response = await instance.put(`/class/${slug}`, data);
+    return response.data;
+  } catch (error) {
+    if (error.response && error.response.data) {
+      return error.response.data;
+    }
+    return { success: false, message: "Server error" };
+  }
+};
+
+export const fetchClassBySlug = async (slug) => {
+  try {
+    const response = await instance.get(`/class/${slug}`);
+    return response.data;
+  } catch (error) {
+    if (error.response && error.response.data) {
+      return error.response.data;
+    }
+    return { success: false, message: "Server error" };
+  }
+};
+
+export const fixClassSlugs = async () => {
+  try {
+    const response = await instance.get("/class/fix-slugs");
     return response.data;
   } catch (error) {
     if (error.response && error.response.data) {

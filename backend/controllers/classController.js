@@ -3,6 +3,23 @@ import { User } from "../models/user.js";
 import crypto from "crypto";
 import { Slide } from "../models/slideModel.js";
 
+const generateSlug = async (title) => {
+  let baseSlug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  
+  let slug = baseSlug;
+  let counter = 1;
+  
+  while (await Class.findOne({ slug })) {
+    slug = `${baseSlug}-${counter}`;
+    counter++;
+  }
+  
+  return slug;
+};
+
 export const createClass = async (req, res) => {
   try {
     const { title, description } = req.body;
@@ -30,8 +47,11 @@ export const createClass = async (req, res) => {
       joinCode = crypto.randomBytes(4).toString("hex");
     }
 
+    const slug = await generateSlug(title);
+
     const newClass = await Class.create({
       title,
+      slug,
       description: description || "",
       teacher: user._id,
       joinCode,
@@ -153,9 +173,9 @@ export const fetchUserClasses = async (req, res) => {
   }
 };
 
-export const deleteClass = async (req, res) => {
+export const fetchClassBySlug = async (req, res) => {
   try {
-    const classId = req.params.id;
+    const { slug } = req.params;
     const { uid } = req.user;
 
     const user = await User.findOne({ firebaseUid: uid });
@@ -167,7 +187,59 @@ export const deleteClass = async (req, res) => {
       });
     }
 
-    const foundClass = await Class.findById(classId);
+    const foundClass = await Class.findOne({ slug })
+      .populate("teacher", "name email avatar")
+      .populate("students", "name email avatar");
+
+    if (!foundClass) {
+      return res.status(404).json({
+        success: false,
+        message: "Class not found",
+      });
+    }
+
+    const isTeacher = foundClass.teacher._id.toString() === user._id.toString();
+    const isStudent = foundClass.students.some(
+      student => student._id.toString() === user._id.toString()
+    );
+
+    if (!isTeacher && !isStudent) {
+      return res.status(403).json({
+        success: false,
+        message: "You don't have access to this class",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Class fetched successfully",
+      class: foundClass,
+      isTeacher,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
+export const deleteClass = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { uid } = req.user;
+
+    const user = await User.findOne({ firebaseUid: uid });
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const foundClass = await Class.findOne({ slug });
 
     if (!foundClass) {
       return res.status(404).json({
@@ -183,7 +255,7 @@ export const deleteClass = async (req, res) => {
       });
     }
 
-    const slides = await Slide.find({ class: classId });
+    const slides = await Slide.find({ class: foundClass._id });
 
     if (slides.length > 0) {
       for (const slide of slides) {
@@ -200,8 +272,8 @@ export const deleteClass = async (req, res) => {
       }
     }
 
-    await Slide.deleteMany({ class: classId });
-    await Class.findByIdAndDelete(classId);
+    await Slide.deleteMany({ class: foundClass._id });
+    await Class.findByIdAndDelete(foundClass._id);
 
     res.json({
       success: true,
@@ -218,7 +290,7 @@ export const deleteClass = async (req, res) => {
 
 export const fetchClassStudents = async (req, res) => {
   try {
-    const classId = req.params.id;
+    const { slug } = req.params;
     const { uid } = req.user;
 
     const user = await User.findOne({ firebaseUid: uid });
@@ -230,7 +302,7 @@ export const fetchClassStudents = async (req, res) => {
       });
     }
 
-    const foundClass = await Class.findById(classId).populate(
+    const foundClass = await Class.findOne({ slug }).populate(
       "students",
       "name email avatar",
     );
@@ -258,7 +330,7 @@ export const fetchClassStudents = async (req, res) => {
 
 export const updateClass = async (req, res) => {
   try {
-    const classId = req.params.id;
+    const { slug } = req.params;
     const { title, description } = req.body;
     const { uid } = req.user;
 
@@ -271,7 +343,7 @@ export const updateClass = async (req, res) => {
       });
     }
 
-    const foundClass = await Class.findById(classId);
+    const foundClass = await Class.findOne({ slug });
 
     if (!foundClass) {
       return res.status(404).json({
@@ -287,8 +359,11 @@ export const updateClass = async (req, res) => {
       });
     }
 
-    if (title) foundClass.title = title;
-    if (description) foundClass.description = description;
+    if (title && title !== foundClass.title) {
+      foundClass.title = title;
+      foundClass.slug = await generateSlug(title);
+    }
+    if (description !== undefined) foundClass.description = description;
 
     await foundClass.save();
 
@@ -300,6 +375,31 @@ export const updateClass = async (req, res) => {
       success: true,
       message: "Class updated successfully",
       class: populatedClass,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
+export const fixClassSlugs = async (req, res) => {
+  try {
+    const classes = await Class.find({});
+    let updatedCount = 0;
+    
+    for (const cls of classes) {
+      const slug = await generateSlug(cls.title);
+      cls.slug = slug;
+      await cls.save();
+      updatedCount++;
+    }
+
+    res.json({
+      success: true,
+      message: `${updatedCount} classes updated with slugs`,
     });
   } catch (error) {
     console.error(error);
