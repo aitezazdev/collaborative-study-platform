@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { ClipLoader } from "react-spinners";
 import { fetchSlideById } from "../api/slideApi";
@@ -29,23 +29,46 @@ const SlideViewer = () => {
   const pageRefs = useRef({});
   const observerRef = useRef(null);
   const renderingPagesRef = useRef(new Set());
+  const mainContainerRef = useRef(null);
+  const resizeDebounceRef = useRef(null);
 
   const { pdfJsReady, error: pdfJsError } = usePdfJs();
-  const { containerWidth, wrapperRef } = useContainerWidth([pdfDoc]);
+  const { containerWidth, wrapperRef } = useContainerWidth([pdfDoc, showComments]);
+
+  const triggerDebouncedResize = useCallback(() => {
+    if (resizeDebounceRef.current) {
+      clearTimeout(resizeDebounceRef.current);
+    }
+
+    resizeDebounceRef.current = setTimeout(() => {
+      window.dispatchEvent(new Event("resize"));
+    }, 400);
+  }, []);
+
+  useEffect(() => {
+    if (!mainContainerRef.current) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      triggerDebouncedResize();
+    });
+
+    resizeObserver.observe(mainContainerRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+      if (resizeDebounceRef.current) {
+        clearTimeout(resizeDebounceRef.current);
+      }
+    };
+  }, [triggerDebouncedResize]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (wrapperRef.current) {
-        const rect = wrapperRef.current.getBoundingClientRect();
-        const width = rect.width > 0 ? rect.width - 64 : 0;
-        if (width > 0 && width !== containerWidth) {
-          window.dispatchEvent(new Event("resize"));
-        }
-      }
-    }, 350);
+      window.dispatchEvent(new Event("resize"));
+    }, 400);
 
     return () => clearTimeout(timer);
-  }, [showComments, containerWidth, wrapperRef]);
+  }, [showComments]);
 
   useEffect(() => {
     if (pdfJsError) {
@@ -86,6 +109,7 @@ const SlideViewer = () => {
 
         setPdfDoc(pdf);
         setNumPages(pdf.numPages);
+        setCurrentPage(1);
         setRendering(false);
         setError(null);
       } catch (err) {
@@ -133,7 +157,9 @@ const SlideViewer = () => {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
           const pageNum = parseInt(entry.target.dataset.pageNumber);
-          setCurrentPage(pageNum);
+          if (!isNaN(pageNum)) {
+            setCurrentPage(pageNum);
+          }
         }
       });
     }, options);
@@ -143,6 +169,17 @@ const SlideViewer = () => {
         observerRef.current.observe(ref);
       }
     });
+
+    setTimeout(() => {
+      const firstPageRef = pageRefs.current[1];
+      if (firstPageRef) {
+        const rect = firstPageRef.getBoundingClientRect();
+        const containerRect = containerRef.current?.getBoundingClientRect();
+        if (containerRect && rect.top < containerRect.bottom && rect.bottom > containerRect.top) {
+          setCurrentPage(1);
+        }
+      }
+    }, 100);
 
     return () => {
       if (observerRef.current) {
@@ -174,7 +211,7 @@ const SlideViewer = () => {
     return () => {
       renderingPagesRef.current.clear();
     };
-  }, [pdfDoc, numPages, containerWidth, scale, showComments]);
+  }, [pdfDoc, numPages, containerWidth, scale]);
 
   const handleZoomIn = () => {
     setScale((prevScale) => Math.min(prevScale + 0.25, 3.0));
@@ -228,18 +265,20 @@ const SlideViewer = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div ref={mainContainerRef} className="min-h-screen bg-gray-50">
       <PdfStyles />
       <SlideHeader
         slide={slide}
+        currentPage={currentPage}
+        numPages={numPages}
         showComments={showComments}
         onToggleComments={() => setShowComments(!showComments)}
         onDownload={handleDownload}
       />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div className="flex gap-4 h-[calc(100vh-180px)]">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-2">
+        <div className="flex gap-4 h-[calc(100vh-100px)]">
           <div
-            className={`flex-1 bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col transition-all duration-300 ${
+            className={`flex-1 bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col transition-all duration-500 ease-out ${
               showComments ? "max-w-[calc(100%-26rem)]" : "max-w-full"
             }`}
           >
@@ -260,7 +299,7 @@ const SlideViewer = () => {
             >
               <div
                 ref={wrapperRef}
-                className="flex flex-col items-center min-h-full p-8 gap-6"
+                className="flex flex-col items-center min-h-full p-4 gap-4 transition-all duration-300 ease-out"
               >
                 {!pdfDoc || containerWidth <= 0 ? (
                   <div className="flex flex-col items-center justify-center h-full py-20 gap-4">
