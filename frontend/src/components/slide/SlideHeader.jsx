@@ -40,7 +40,7 @@ const SlideHeader = ({ slide, showComments, onToggleComments, onDownload }) => {
           </div>
         </div>
       </div>
-    </div>
+    </div> 
   );
 };
 
