@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import LiquidGlassButton from "./LiquadButton";
 import { useDispatch, useSelector } from "react-redux";
 import { registerUser, signInWithGoogle } from "../redux/slices/authSlice";
@@ -17,192 +17,245 @@ const Register = () => {
     password: "",
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [localError, setLocalError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({
+    name: "",
+    email: "",
+    password: "",
+  });
+
+  useEffect(() => {
+    if (error) {
+      setLocalError(error);
+    }
+  }, [error]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setUserdata({ ...userdata, [name]: value });
+    
+    if (localError) {
+      setLocalError("");
+    }
+    
+    if (fieldErrors[name]) {
+      setFieldErrors({ ...fieldErrors, [name]: "" });
+    }
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    let isValid = true;
+
+    if (!userdata.name.trim()) {
+      errors.name = "Name is required";
+      isValid = false;
+    }
+
+    if (!userdata.email.trim()) {
+      errors.email = "Email is required";
+      isValid = false;
+    }
+
+    if (!userdata.password.trim()) {
+      errors.password = "Password is required";
+      isValid = false;
+    } else if (userdata.password.length < 6) {
+      errors.password = "Password must be at least 6 characters";
+      isValid = false;
+    }
+
+    setFieldErrors(errors);
+    return isValid;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+
     try {
-      const result = await dispatch(registerUser(userdata)).unwrap();      
+      const result = await dispatch(registerUser(userdata)).unwrap();
       toast.success("Registration Successful");
       navigate("/");
     } catch (err) {
-      toast.error(err || "Registration Failed");
+      setLocalError(err || "Registration Failed");
     }
   };
 
   const handleGoogleSignIn = async () => {
     try {
-      const result = await dispatch(signInWithGoogle()).unwrap();    
+      const result = await dispatch(signInWithGoogle()).unwrap();
       toast.success("Signed in with Google successfully");
       navigate("/");
     } catch (error) {
-      toast.error(error || "Google sign-in failed");
+      setLocalError(error || "Google sign-in failed");
     }
   };
 
+  const handleNavigateToLogin = () => {
+    setLocalError("");
+    setFieldErrors({ name: "", email: "", password: "" });
+    setUserdata({ name: "", email: "", password: "" });
+    navigate("/login");
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-blue-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-white px-4 py-6">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h2 className="text-4xl font-bold text-gray-800 mb-2">
+          <h2 className="text-3xl font-semibold text-zinc-900 mb-2">
             Create Account
           </h2>
-          <p className="text-gray-600">Join us today and get started</p>
+          <p className="text-zinc-600 text-sm">Join our learning community today</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl p-8 space-y-6">
+        <div className="space-y-4">
           <button
             type="button"
             onClick={handleGoogleSignIn}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3.5 border-2 border-gray-200 rounded-xl bg-white hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md group"
+            className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-zinc-300 rounded-lg bg-white hover:bg-zinc-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <FcGoogle className="text-2xl group-hover:scale-110 transition-transform duration-200" />
-            <span className="font-semibold text-gray-700">
+            <FcGoogle className="text-xl" />
+            <span className="font-medium text-zinc-700">
               Continue with Google
             </span>
           </button>
 
-          <div className="flex items-center my-6">
-            <div className="flex-1 border-t border-gray-300"></div>
-            <span className="px-4 text-gray-500 text-sm font-medium">
-              OR
-            </span>
-            <div className="flex-1 border-t border-gray-300"></div>
+          <div className="flex items-center">
+            <div className="flex-1 border-t border-zinc-200"></div>
+            <span className="px-4 text-zinc-500 text-sm">OR</span>
+            <div className="flex-1 border-t border-zinc-200"></div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
               <label
                 htmlFor="name"
-                className="block text-sm font-semibold text-gray-700"
+                className="block text-sm font-medium text-zinc-700 mb-1.5"
               >
                 Full Name
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <FiUser className="text-gray-400 text-xl" />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FiUser className="text-zinc-400" />
                 </div>
                 <input
                   type="text"
                   id="name"
                   name="name"
-                  required
                   value={userdata.name}
                   onChange={handleChange}
                   placeholder="Enter your full name"
-                  className="w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 outline-none transition-all duration-200 text-gray-700"
+                  className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 outline-none transition-all text-zinc-900 ${
+                    fieldErrors.name
+                      ? "border-red-500 focus:border-red-500 focus:ring-red-100"
+                      : "border-zinc-300 focus:border-blue-500 focus:ring-blue-100"
+                  }`}
                 />
               </div>
+              {fieldErrors.name && (
+                <p className="text-red-600 text-xs mt-1">{fieldErrors.name}</p>
+              )}
             </div>
 
-            <div className="space-y-2">
+            <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-semibold text-gray-700"
+                className="block text-sm font-medium text-zinc-700 mb-1.5"
               >
                 Email Address
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <FiMail className="text-gray-400 text-xl" />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FiMail className="text-zinc-400" />
                 </div>
                 <input
                   type="email"
                   id="email"
                   name="email"
-                  required
                   value={userdata.email}
                   onChange={handleChange}
                   placeholder="Enter your email"
-                  className="w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 outline-none transition-all duration-200 text-gray-700"
+                  className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 outline-none transition-all text-zinc-900 ${
+                    fieldErrors.email
+                      ? "border-red-500 focus:border-red-500 focus:ring-red-100"
+                      : "border-zinc-300 focus:border-blue-500 focus:ring-blue-100"
+                  }`}
                 />
               </div>
+              {fieldErrors.email && (
+                <p className="text-red-600 text-xs mt-1">{fieldErrors.email}</p>
+              )}
             </div>
 
-            <div className="space-y-2">
+            <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-semibold text-gray-700"
+                className="block text-sm font-medium text-zinc-700 mb-1.5"
               >
                 Password
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <FiLock className="text-gray-400 text-xl" />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FiLock className="text-zinc-400" />
                 </div>
                 <input
                   type={showPassword ? "text" : "password"}
                   id="password"
                   name="password"
-                  required
                   value={userdata.password}
                   onChange={handleChange}
                   placeholder="Create a password"
-                  className="w-full pl-12 pr-12 py-3.5 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 outline-none transition-all duration-200 text-gray-700"
+                  className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 outline-none transition-all text-zinc-900 ${
+                    fieldErrors.password
+                      ? "border-red-500 focus:border-red-500 focus:ring-red-100"
+                      : "border-zinc-300 focus:border-blue-500 focus:ring-blue-100"
+                  }`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-400 hover:text-zinc-600"
                 >
                   {showPassword ? (
-                    <FiEyeOff className="text-xl" />
+                    <FiEyeOff className="text-lg" />
                   ) : (
-                    <FiEye className="text-xl" />
+                    <FiEye className="text-lg" />
                   )}
                 </button>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Must be at least 6 characters
-              </p>
+              {fieldErrors.password && (
+                <p className="text-red-600 text-xs mt-1">{fieldErrors.password}</p>
+              )}
             </div>
 
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
-                {error}
+            {localError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-lg text-sm">
+                {localError}
               </div>
             )}
-
-            <p className="text-xs text-gray-600 leading-relaxed">
-              By creating an account, you agree to our{" "}
-              <a href="#" className="text-purple-600 hover:underline font-medium">
-                Terms of Service
-              </a>{" "}
-              and{" "}
-              <a href="#" className="text-purple-600 hover:underline font-medium">
-                Privacy Policy
-              </a>
-            </p>
 
             <LiquidGlassButton
               text={loading ? "Creating Account..." : "Create Account"}
             />
           </form>
 
-          <div className="text-center pt-4 border-t border-gray-200">
-            <p className="text-gray-600">
+          <div className="text-center pt-4 border-t border-zinc-200">
+            <p className="text-zinc-600 text-sm">
               Already have an account?{" "}
-              <Link
-                to="/login"
-                className="text-purple-600 font-semibold hover:text-purple-700 hover:underline transition-colors"
+              <button
+                onClick={handleNavigateToLogin}
+                className="text-blue-600 font-semibold hover:text-blue-700 underline"
               >
                 Sign in
-              </Link>
+              </button>
             </p>
           </div>
         </div>
-
-        <p className="text-center text-gray-500 text-sm mt-8">
-          Protected by reCAPTCHA and subject to the{" "}
-          <a href="#" className="underline hover:text-gray-700">
-            Privacy Policy
-          </a>
-        </p>
       </div>
     </div>
   );
