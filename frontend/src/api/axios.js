@@ -1,5 +1,6 @@
 import axios from "axios";
 import { auth } from "../firebase";
+
 const instance = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
 });
@@ -13,10 +14,19 @@ instance.interceptors.request.use(
         const token = await user.getIdToken(true);
         config.headers.Authorization = `Bearer ${token}`;
       } else {
-        console.log("[AXIOS REQUEST] No authenticated user");
+        const localToken = localStorage.getItem("token");
+        if (localToken) {
+          config.headers.Authorization = `Bearer ${localToken}`;
+        } else {
+          console.log("[AXIOS REQUEST] No authenticated user");
+        }
       }
     } catch (error) {
       console.error("[AXIOS REQUEST] Error getting token:", error);
+      const localToken = localStorage.getItem("token");
+      if (localToken) {
+        config.headers.Authorization = `Bearer ${localToken}`;
+      }
     }
     
     if (config.data instanceof FormData) {
@@ -44,12 +54,15 @@ instance.interceptors.response.use(
         const user = auth.currentUser;
         if (user) {
           const newToken = await user.getIdToken(true);
-          
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          localStorage.setItem("token", newToken);
           return instance(originalRequest);
         }
       } catch (refreshError) {
         console.error("Token refresh failed:", refreshError);
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        window.location.href = "/login";
         return Promise.reject(refreshError);
       }
     }
