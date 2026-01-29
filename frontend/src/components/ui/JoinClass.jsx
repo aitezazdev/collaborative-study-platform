@@ -18,14 +18,13 @@ const JoinClass = ({ handle, refreshClasses }) => {
         return;
       }
       setLoading(true);
-      const response = await joinClass({ joinCode: joinCode });
+      await joinClass({ joinCode: joinCode });
       if (refreshClasses) {
         await refreshClasses();
       }
       toast.success("Class Joined Successfully");
       handle();
     } catch (error) {
-      console.log("Error joining class:", error);
       toast.error(error.response?.data?.message || "Failed to join class");
     } finally {
       setLoading(false);
@@ -41,12 +40,16 @@ const JoinClass = ({ handle, refreshClasses }) => {
       <div className="p-6">
         <div className="mb-5">
           <h2 className="text-xl font-bold text-gray-800">Join a Class</h2>
-          <p className="text-sm text-gray-500 mt-1">Enter the class code provided by your instructor</p>
+          <p className="text-sm text-gray-500 mt-1">
+            Enter the class code provided by your instructor
+          </p>
         </div>
 
         <div className="mb-5">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="joinCode" className="text-sm font-medium text-gray-700">
+            <label
+              htmlFor="joinCode"
+              className="text-sm font-medium text-gray-700">
               Class Code <span className="text-red-500">*</span>
             </label>
             <input

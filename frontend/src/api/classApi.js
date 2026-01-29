@@ -17,10 +17,7 @@ export const joinClass = async (data) => {
     const response = await instance.post("/class/join", data);
     return response.data;
   } catch (error) {
-    if (error.response && error.response.data) {
-      return error.response.data;
-    }
-    return { success: false, message: "Server error" };
+    throw error;
   }
 };
 
