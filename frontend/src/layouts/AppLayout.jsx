@@ -1,8 +1,8 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { useDispatch } from "react-redux";
-import { logout } from "../redux/slices/authSlice";
+import { useDispatch, useSelector } from "react-redux";
+import { logout, setUser as setReduxUser } from "../redux/slices/authSlice";
 import { fetchUserProfile } from "../api/userProfile";
 import CreateClass from "../components/ui/CreateClass";
 import JoinClass from "../components/ui/JoinClass";
@@ -25,25 +25,48 @@ const AppLayout = () => {
   const location = useLocation();
   const dispatch = useDispatch();
 
+  const reduxUser = useSelector((state) => state.auth.user);
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [user, setUser] = useState(() => {
-    return JSON.parse(localStorage.getItem("user")) || null;
+    return reduxUser || JSON.parse(localStorage.getItem("user")) || null;
   });
+
+  const handleUserUpdate = (updatedUser) => {
+    setUser(updatedUser);
+    localStorage.setItem("user", JSON.stringify(updatedUser));
+    const token = localStorage.getItem("token");
+    dispatch(setReduxUser({ user: updatedUser, token }));
+  };
 
   useEffect(() => {
     const getUser = async () => {
-      const res = await fetchUserProfile();
-      if (res.success) {
-        setUser(res.data);
-        localStorage.setItem("user", JSON.stringify(res.data));
+      try {
+        if (!user || !user._id) {
+          const res = await fetchUserProfile();          
+          if (res.success && res.data) {
+            handleUserUpdate(res.data);
+          } else {
+            console.log("Failed to fetch user profile:", res);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
       }
     };
+    
     getUser();
   }, []);
+
+  useEffect(() => {
+    if (reduxUser && reduxUser._id) {
+      setUser(reduxUser);
+    }
+  }, [reduxUser]);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -80,6 +103,7 @@ const AppLayout = () => {
             <div className="flex flex-col items-center text-center">
               <div className="relative mb-4">
                 <div
+                  key={user?.avatar || 'no-avatar'} 
                   className={`rounded-full flex items-center justify-center text-white font-bold overflow-hidden bg-blue-500 ring-4 ring-blue-50 transition-all duration-500 ${
                     isSidebarCollapsed ? "w-12 h-12 text-lg" : "w-24 h-24 text-3xl"
                   }`}>
@@ -88,6 +112,10 @@ const AppLayout = () => {
                       src={user.avatar}
                       alt="Avatar"
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        console.error("Image failed to load:", user.avatar);
+                        e.target.style.display = 'none';
+                      }}
                     />
                   ) : (
                     user?.name?.charAt(0).toUpperCase() || "A"
@@ -245,7 +273,7 @@ const AppLayout = () => {
         <EditProfileModal
           handle={() => setIsModalOpen(false)}
           user={user}
-          setUser={setUser}
+          onUserUpdate={handleUserUpdate}
         />
       )}
     </div>

@@ -1,91 +1,81 @@
 import { User } from "../models/user.js";
-import jwt from "jsonwebtoken";
-import bcrypt from "bcryptjs";
 
-//LOGIN CONTROLLER
-export const login = async (req, res) => {
+export const firebaseLogin = async (req, res) => {
   try {
-    const { email, password } = req.body;
-    const user = await User.findOne({ email });
+    const { uid, email, name, picture } = req.user;
+    const token = req.body.token;
+
+    let user = await User.findOne({ firebaseUid: uid });
+
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      user = await User.create({
+        firebaseUid: uid,
+        email,
+        name: name || email.split("@")[0],
+        avatar: picture || "",
+      });
+    } else {
+      console.log("Existing user found:", uid);
     }
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-    const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "3d",
-    });
 
     res.status(200).json({
+      success: true,
       message: "Login successful",
-      token,
+      token: token,
       user: {
-        id: user._id,
-        name: user.name,
+        _id: user._id,                    
+        id: user._id,                     
+        uid: user.firebaseUid,
+        firebaseUid: user.firebaseUid,   
         email: user.email,
-        joined: user.createdAt
+        name: user.name,
+        avatar: user.avatar,
+        bio: user.bio,
+        role: user.role,
       },
     });
   } catch (error) {
-    res.status(500).json({ message: "Internal server error" });
+    console.error("Login error:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    });
   }
 };
 
-// register a user (student or teacher (doesn't matter here))
-export const registerUser = async (req, res) => {
+export const getUserInfo = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { uid } = req.user;
+    const user = await User.findOne({ firebaseUid: uid });
 
-    if (!name || !email || !password) {
-      return res.status(400).json({
+    if (!user) {
+      return res.status(404).json({
         success: false,
-        message: "All fields are required",
+        message: "User not found",
       });
     }
 
-    if (password.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: "Password must be at least 6 characters long",
-      });
-    }
-
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(409).json({
-        success: false,
-        message: "User already exists",
-      });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-    });
-
-    const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "3d",
-    });
-
-    res.status(201).json({
+    res.status(200).json({
       success: true,
-      message: "User registered successfully",
-      token,
       user: {
-        id: user._id,
-        name: user.name,
+        _id: user._id,                    
+        id: user._id,                     
+        uid: user.firebaseUid,
+        firebaseUid: user.firebaseUid,   
         email: user.email,
+        name: user.name,
+        avatar: user.avatar,
+        bio: user.bio,
+        role: user.role,
       },
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({
+    console.error("Get user info error:", error);
+    res.status(500).json({ 
+      success: false,
       message: "Internal server error",
+      error: error.message
     });
   }
 };

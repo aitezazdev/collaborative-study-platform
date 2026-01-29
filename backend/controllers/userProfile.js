@@ -5,25 +5,56 @@ import streamifier from "streamifier";
 // get user profile info
 export const getUserProfile = async (req, res) => {
   try {
-    const userId = req.user?._id;
-    if (!userId) {
+    const firebaseUid = req.user?.uid;
+        
+    if (!firebaseUid) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
-    const user = await User.findById(userId).select("-password");
-    res
-      .status(200)
-      .json({ success: true, message: "User profile", data: user });
+    
+    const user = await User.findOne({ firebaseUid }).select("-password");
+    
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    
+    const responseData = {
+      _id: user._id,
+      id: user._id,
+      uid: user.firebaseUid,
+      firebaseUid: user.firebaseUid,
+      email: user.email,
+      name: user.name,
+      avatar: user.avatar,
+      bio: user.bio,
+      role: user.role,
+      createdAt: user.createdAt,
+    };
+        
+    res.status(200).json({ 
+      success: true, 
+      message: "User profile", 
+      data: responseData
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: "Server Error" });
   }
 };
 
+
 // update user profile info
 export const updateProfile = async (req, res) => {
   try {
-    const userId = req.user?._id;
-    if (!userId)
+    const firebaseUid = req.user?.uid;
+    
+    if (!firebaseUid) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const user = await User.findOne({ firebaseUid });
+    
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
 
     const updatedData = {};
 
@@ -31,7 +62,9 @@ export const updateProfile = async (req, res) => {
     if (req.body.email) updatedData.email = req.body.email;
     if (req.body.bio) updatedData.bio = req.body.bio;
 
+
     if (req.file?.buffer) {
+      
       const uploadAvatar = () =>
         new Promise((resolve, reject) => {
           const stream = cloudinary.uploader.upload_stream(
@@ -41,39 +74,66 @@ export const updateProfile = async (req, res) => {
               resource_type: "image",
             },
             (error, result) => {
-              if (result) resolve(result);
-              else reject(error);
+              if (error) {
+                console.error("Cloudinary upload error:", error);
+                reject(error);
+              } else {
+                resolve(result);
+              }
             },
           );
           streamifier.createReadStream(req.file.buffer).pipe(stream);
         });
 
-      const result = await uploadAvatar();
+      try {
+        const result = await uploadAvatar();
+        if (user.avatarPublicId) {
+          await cloudinary.uploader.destroy(user.avatarPublicId);
+        }
 
-      const user = await User.findById(userId);
-      if (user?.avatarPublicId) {
-        await cloudinary.uploader.destroy(user.avatarPublicId);
+        updatedData.avatar = result.secure_url;
+        updatedData.avatarPublicId = result.public_id;
+      } catch (uploadError) {
+        return res.status(500).json({ 
+          success: false, 
+          message: "Failed to upload avatar", 
+          error: uploadError.message 
+        });
       }
-
-      updatedData.avatar = result.secure_url;
-      updatedData.avatarPublicId = result.public_id;
+    } else {
+      console.log("⚠️ No file buffer found in request");
     }
 
     const updatedUser = await User.findByIdAndUpdate(
-      userId,
+      user._id,
       { $set: updatedData },
       { new: true },
     ).select("-password");
 
+    const responseData = {
+      _id: updatedUser._id,
+      id: updatedUser._id,
+      uid: updatedUser.firebaseUid,
+      firebaseUid: updatedUser.firebaseUid,
+      email: updatedUser.email,
+      name: updatedUser.name,
+      avatar: updatedUser.avatar,
+      bio: updatedUser.bio,
+      role: updatedUser.role,
+      createdAt: updatedUser.createdAt,
+    };
+
+
     res.status(200).json({
       success: true,
       message: "Profile updated successfully",
-      data: updatedUser,
+      data: responseData
     });
   } catch (error) {
-    console.error("Update Profile Error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Server Error", error: error.message });
+    res.status(500).json({ 
+      success: false, 
+      message: "Server Error", 
+      error: error.message 
+    });
   }
 };

@@ -25,7 +25,18 @@ const HomePage = () => {
 
   const { refreshTrigger } = useOutletContext();
   const reduxUser = useSelector((state) => state.auth.user);
-  const localUser = JSON.parse(localStorage.getItem("user"));
+  const localUser = (() => {
+  try {
+    const userStr = localStorage.getItem("user");
+    if (!userStr || userStr === "undefined" || userStr === "null") {
+      return null;
+    }
+    return JSON.parse(userStr);
+  } catch (error) {
+    console.error("Error parsing user from localStorage:", error);
+    return null;
+  }
+})();
   const user = reduxUser || localUser;
 
   const getUserClasses = async () => {
@@ -34,7 +45,6 @@ const HomePage = () => {
       const data = await fetchUserClasses();
       setClasses(data.data || []);
     } catch (error) {
-      console.error("Error fetching classes:", error);
       toast.error("Failed to fetch classes");
     } finally {
       setFetchingClasses(false);
