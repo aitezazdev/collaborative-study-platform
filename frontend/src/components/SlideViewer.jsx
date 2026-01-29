@@ -39,13 +39,13 @@ const SlideViewer = () => {
         const rect = wrapperRef.current.getBoundingClientRect();
         const width = rect.width > 0 ? rect.width - 64 : 0;
         if (width > 0 && width !== containerWidth) {
-          window.dispatchEvent(new Event('resize'));
+          window.dispatchEvent(new Event("resize"));
         }
       }
     }, 350);
 
     return () => clearTimeout(timer);
-  }, [showComments]);
+  }, [showComments, containerWidth, wrapperRef]);
 
   useEffect(() => {
     if (pdfJsError) {
@@ -236,12 +236,13 @@ const SlideViewer = () => {
         onToggleComments={() => setShowComments(!showComments)}
         onDownload={handleDownload}
       />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="flex gap-4 h-[calc(100vh-180px)]">
           <div
             className={`flex-1 bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col transition-all duration-300 ${
               showComments ? "max-w-[calc(100%-26rem)]" : "max-w-full"
-            }`}>
+            }`}
+          >
             <PdfControls
               currentPage={currentPage}
               numPages={numPages}
@@ -255,10 +256,12 @@ const SlideViewer = () => {
             <div
               id="pdf-viewer-container"
               ref={containerRef}
-              className="flex-1 overflow-auto bg-slate-100 h-[calc(100vh-240px)]">
+              className="flex-1 overflow-auto bg-slate-100"
+            >
               <div
                 ref={wrapperRef}
-                className="flex flex-col items-center min-h-full p-8 gap-6">
+                className="flex flex-col items-center min-h-full p-8 gap-6"
+              >
                 {!pdfDoc || containerWidth <= 0 ? (
                   <div className="flex flex-col items-center justify-center h-full py-20 gap-4">
                     <ClipLoader color="#3B82F6" size={50} />
